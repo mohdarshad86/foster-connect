@@ -18,12 +18,13 @@ export interface PublicAnimal {
 
 interface Props {
   animal: PublicAnimal
+  href?:  string
 }
 
-export function AnimalCard({ animal }: Props) {
+export function AnimalCard({ animal, href }: Props) {
   return (
     <Link
-      href={`/animals/${animal.id}`}
+      href={href ?? `/animals/${animal.id}`}
       className="group block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md hover:border-blue-200 transition-all"
     >
       {/* Photo */}
