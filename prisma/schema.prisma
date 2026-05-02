@@ -1,0 +1,303 @@
+// Foster Connect — Prisma Schema (MongoDB)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Composite Types (embedded documents)
+// ---------------------------------------------------------------------------
+
+type StatusHistoryEntry {
+  from        String
+  to          String
+  changedById String
+  changedAt   DateTime
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  RESCUE_LEAD
+  INTAKE_SPECIALIST
+  FOSTER_PARENT
+  MEDICAL_OFFICER
+  ADOPTION_COUNSELOR
+}
+
+enum AnimalStatus {
+  INTAKE
+  IN_FOSTER
+  ADOPTION_READY
+  PENDING_ADOPTION
+  ADOPTED
+}
+
+enum AlertSeverity {
+  CRITICAL
+  INFORMATIONAL
+}
+
+enum MedicalRecordType {
+  VACCINATION
+  SURGERY
+  MEDICATION
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  MEET_GREET_SCHEDULED
+  RECOMMENDED
+  APPROVED
+  DENIED
+  WAITLISTED
+}
+
+enum Recommendation {
+  APPROVE
+  DENY
+  WAITLIST
+}
+
+// ---------------------------------------------------------------------------
+// User
+// ---------------------------------------------------------------------------
+
+model User {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               Role
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  assignedAnimals    Animal[]             @relation("FosterAnimals")
+  intakedAnimals     Animal[]             @relation("IntakeAnimals")
+  progressNotes      ProgressNote[]
+  medicalRecords     MedicalRecord[]
+  alertsCreated      MedicalAlert[]       @relation("AlertCreator")
+  alertsResolved     MedicalAlert[]       @relation("AlertResolver")
+  applications       AdopterApplication[] @relation("CounselorApplications")
+  finalizedApps      AdopterApplication[] @relation("LeadDecisions")
+  vetPartnersAdded   VetPartner[]
+}
+
+// ---------------------------------------------------------------------------
+// Animal
+// ---------------------------------------------------------------------------
+
+model Animal {
+  id            String               @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  species       String
+  breed         String?
+  ageYears      Float?
+  sex           String
+  colorMarkings String?
+  intakeDate    DateTime             @default(now())
+  status        AnimalStatus         @default(INTAKE)
+  primaryPhoto  String?
+
+  // Embedded status history (no separate collection needed)
+  statusHistory StatusHistoryEntry[]
+
+  // Assigned staff
+  fosterParentId     String? @db.ObjectId
+  fosterParent       User?   @relation("FosterAnimals", fields: [fosterParentId], references: [id])
+
+  intakeSpecialistId String? @db.ObjectId
+  intakeSpecialist   User?   @relation("IntakeAnimals", fields: [intakeSpecialistId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  photos             AnimalPhoto[]
+  medicalRecords     MedicalRecord[]
+  medicalAlerts      MedicalAlert[]
+  progressNotes      ProgressNote[]
+  personalityProfile PersonalityProfile?
+  applications       AdopterApplication[]
+}
+
+// ---------------------------------------------------------------------------
+// AnimalPhoto
+// ---------------------------------------------------------------------------
+
+model AnimalPhoto {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  animalId   String   @db.ObjectId
+  animal     Animal   @relation(fields: [animalId], references: [id])
+  filePath   String
+  caption    String?
+  uploadedAt DateTime @default(now())
+  uploadedBy String   @db.ObjectId
+}
+
+// ---------------------------------------------------------------------------
+// MedicalRecord
+// ---------------------------------------------------------------------------
+
+model MedicalRecord {
+  id       String            @id @default(auto()) @map("_id") @db.ObjectId
+  animalId String            @db.ObjectId
+  animal   Animal            @relation(fields: [animalId], references: [id])
+  type     MedicalRecordType
+  date     DateTime
+
+  // Vaccination fields
+  vaccineName String?
+  nextDueDate DateTime?
+
+  // Surgery fields
+  surgeryType   String?
+  outcome       String?
+  recoveryNotes String?
+
+  // Medication fields
+  drugName          String?
+  dosage            String?
+  frequency         String?
+  medicationEndDate DateTime?
+
+  notes String?
+
+  // Soft delete (Rescue Lead only)
+  isVoided   Boolean @default(false)
+  voidReason String?
+
+  createdById String @db.ObjectId
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// MedicalAlert
+// ---------------------------------------------------------------------------
+
+model MedicalAlert {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  animalId    String        @db.ObjectId
+  animal      Animal        @relation(fields: [animalId], references: [id])
+  description String
+  severity    AlertSeverity
+
+  isResolved Boolean   @default(false)
+  resolvedAt DateTime?
+
+  createdById String @db.ObjectId
+  createdBy   User   @relation("AlertCreator", fields: [createdById], references: [id])
+
+  resolvedById String? @db.ObjectId
+  resolvedBy   User?   @relation("AlertResolver", fields: [resolvedById], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// ProgressNote
+// ---------------------------------------------------------------------------
+
+model ProgressNote {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  animalId       String   @db.ObjectId
+  animal         Animal   @relation(fields: [animalId], references: [id])
+  fosterParentId String   @db.ObjectId
+  fosterParent   User     @relation(fields: [fosterParentId], references: [id])
+  weekOf         DateTime
+  noteText       String
+  weightKg       Float?
+  createdAt      DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// PersonalityProfile
+// ---------------------------------------------------------------------------
+
+model PersonalityProfile {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  animalId  String @unique @db.ObjectId
+  animal    Animal @relation(fields: [animalId], references: [id])
+
+  traits       String[]
+  energyLevel  String?
+  goodWithKids Boolean?
+  goodWithDogs Boolean?
+  goodWithCats Boolean?
+  idealHome    String?
+
+  updatedById String? @db.ObjectId
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// AdopterApplication
+// ---------------------------------------------------------------------------
+
+model AdopterApplication {
+  id       String            @id @default(auto()) @map("_id") @db.ObjectId
+  animalId String            @db.ObjectId
+  animal   Animal            @relation(fields: [animalId], references: [id])
+  status   ApplicationStatus @default(SUBMITTED)
+
+  // Applicant info (no User account required)
+  applicantName    String
+  applicantEmail   String
+  applicantPhone   String?
+  applicantAddress String?
+  householdNotes   String?
+
+  // Counselor screening
+  screeningNotes  String?
+  homeCheckStatus String?
+  meetGreetAt     DateTime?
+
+  // Recommendation
+  recommendation Recommendation?
+  recommendedAt  DateTime?
+
+  counselorId String? @db.ObjectId
+  counselor   User?   @relation("CounselorApplications", fields: [counselorId], references: [id])
+
+  // Rescue Lead decision
+  decisionNotes String?
+  decidedAt     DateTime?
+  decidedById   String?  @db.ObjectId
+  decidedBy     User?    @relation("LeadDecisions", fields: [decidedById], references: [id])
+
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// VetPartner — contact record only, no login access
+// ---------------------------------------------------------------------------
+
+model VetPartner {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  clinicName  String
+  phone       String?
+  email       String?
+  address     String?
+  specialties String[]
+  notes       String?
+
+  addedById String @db.ObjectId
+  addedBy   User   @relation(fields: [addedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
