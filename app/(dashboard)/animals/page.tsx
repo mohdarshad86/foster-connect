@@ -2,9 +2,9 @@ import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
-import { formatDate } from "@/lib/utils"
-import { AnimalStatusBadge } from "@/components/animals/AnimalStatusBadge"
 import { PlusCircle } from "lucide-react"
+import { AnimalDirectoryClient } from "@/components/animals/AnimalDirectoryClient"
+import type { PublicAnimal } from "@/components/animals/AnimalCard"
 import type { Role } from "@prisma/client"
 
 const INTAKE_ROLES: Role[] = ["INTAKE_SPECIALIST", "RESCUE_LEAD"]
@@ -15,28 +15,40 @@ export default async function AnimalsPage() {
 
   const canIntake = INTAKE_ROLES.includes(session.user.role as Role)
 
-  const animals = await prisma.animal.findMany({
+  // Server-side initial load: first 24 animals, newest first
+  const raw = await prisma.animal.findMany({
     orderBy: { intakeDate: "desc" },
-    take: 50,
+    take: 25, // fetch one extra to detect next page
     select: {
-      id:        true,
-      name:      true,
-      species:   true,
-      breed:     true,
-      sex:       true,
-      status:    true,
-      intakeDate: true,
+      id:           true,
+      name:         true,
+      species:      true,
+      breed:        true,
+      ageYears:     true,
+      sex:          true,
+      status:       true,
+      intakeDate:   true,
+      primaryPhoto: true,
     },
   })
 
+  const hasMore       = raw.length > 24
+  const initialPage   = hasMore ? raw.slice(0, 24) : raw
+  const initialCursor = hasMore ? initialPage[initialPage.length - 1].id : null
+
+  // Serialize dates so they survive the server → client boundary
+  const initialAnimals: PublicAnimal[] = initialPage.map((a) => ({
+    ...a,
+    intakeDate: a.intakeDate.toISOString(),
+  }))
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Animals</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {animals.length} animal{animals.length !== 1 ? "s" : ""} on record
-          </p>
+          <p className="text-sm text-slate-500 mt-1">Browse all animals in the rescue</p>
         </div>
         {canIntake && (
           <Link
@@ -49,50 +61,11 @@ export default async function AnimalsPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        {animals.length === 0 ? (
-          <div className="px-5 py-12 text-center">
-            <p className="text-sm text-slate-400">No animals on record yet.</p>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-slate-500 border-b border-slate-100">
-                <th className="text-left px-5 py-3 font-medium">Name</th>
-                <th className="text-left px-5 py-3 font-medium">Species / Breed</th>
-                <th className="text-left px-5 py-3 font-medium">Sex</th>
-                <th className="text-left px-5 py-3 font-medium">Intake Date</th>
-                <th className="text-left px-5 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {animals.map((animal) => (
-                <tr
-                  key={animal.id}
-                  className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors"
-                >
-                  <td className="px-5 py-3">
-                    <Link
-                      href={`/animals/${animal.id}`}
-                      className="font-medium text-slate-800 hover:text-blue-600"
-                    >
-                      {animal.name}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">
-                    {animal.species}{animal.breed ? ` · ${animal.breed}` : ""}
-                  </td>
-                  <td className="px-5 py-3 text-slate-600">{animal.sex}</td>
-                  <td className="px-5 py-3 text-slate-500">{formatDate(animal.intakeDate)}</td>
-                  <td className="px-5 py-3">
-                    <AnimalStatusBadge status={animal.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {/* Directory — client component owns filters, sort, and pagination */}
+      <AnimalDirectoryClient
+        initialAnimals={initialAnimals}
+        initialNextCursor={initialCursor}
+      />
     </div>
   )
 }

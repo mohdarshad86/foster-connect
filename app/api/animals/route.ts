@@ -3,7 +3,81 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireRole, apiError } from "@/lib/permissions";
 import { AnimalCreateSchema } from "@/lib/validators/animal";
+import type { AnimalStatus } from "@prisma/client";
 
+const ANIMAL_STATUSES: AnimalStatus[] = [
+  "INTAKE", "IN_FOSTER", "ADOPTION_READY", "PENDING_ADOPTION", "ADOPTED",
+];
+
+// ---------------------------------------------------------------------------
+// GET /api/animals
+// Query params: status, species, sort (intakeDate_desc | name_asc), cursor, take
+// ---------------------------------------------------------------------------
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth();
+    requireRole(session, [
+      "RESCUE_LEAD", "INTAKE_SPECIALIST", "FOSTER_PARENT",
+      "MEDICAL_OFFICER", "ADOPTION_COUNSELOR",
+    ]);
+
+    const { searchParams } = req.nextUrl;
+    const status  = searchParams.get("status") as AnimalStatus | null;
+    const species = searchParams.get("species");
+    const sort    = searchParams.get("sort") ?? "intakeDate_desc";
+    const cursor  = searchParams.get("cursor");
+    const take    = Math.min(Number(searchParams.get("take") ?? "24"), 100);
+
+    // Build where clause
+    type WhereClause = {
+      status?: AnimalStatus;
+      species?: { equals: string; mode: "insensitive" };
+    };
+    const where: WhereClause = {};
+    if (status && ANIMAL_STATUSES.includes(status)) {
+      where.status = status;
+    }
+    if (species) {
+      where.species = { equals: species, mode: "insensitive" };
+    }
+
+    // Build orderBy
+    const orderBy =
+      sort === "name_asc"
+        ? { name: "asc" as const }
+        : { intakeDate: "desc" as const };
+
+    const animals = await prisma.animal.findMany({
+      where,
+      orderBy,
+      take: take + 1, // fetch one extra to determine if there's a next page
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id:           true,
+        name:         true,
+        species:      true,
+        breed:        true,
+        ageYears:     true,
+        sex:          true,
+        status:       true,
+        intakeDate:   true,
+        primaryPhoto: true,
+      },
+    });
+
+    const hasMore = animals.length > take;
+    const page    = hasMore ? animals.slice(0, take) : animals;
+    const nextCursor = hasMore ? page[page.length - 1].id : null;
+
+    return NextResponse.json({ animals: page, nextCursor });
+  } catch (err) {
+    return apiError(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/animals
+// ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -28,7 +102,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { intakeNotes, ...animalData } = parsed.data;
 
     // -----------------------------------------------------------------------
@@ -69,7 +142,6 @@ export async function POST(req: NextRequest) {
         status: "INTAKE",
         intakeDate: new Date(),
         intakeSpecialistId: session.user.id,
-        // intakeNotes stored once prisma generate + db push has been run:
         intakeNotes,
       },
     });

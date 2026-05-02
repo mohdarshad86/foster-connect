@@ -36,6 +36,20 @@ export function formatDateTime(date: Date | string): string {
 }
 
 /**
+ * Short datetime format for compact displays.
+ * e.g. "Jun 5, 2025 2:00 PM"
+ */
+export function formatDateTimeShort(date: Date | string): string {
+  return new Date(date).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
+
+/**
  * Return the ISO date of the Monday of the week containing `date`.
  * Used to normalise progress note weekOf values.
  */
