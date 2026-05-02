@@ -11,7 +11,7 @@ export const AnimalCreateSchema = z.object({
   ageYears:      z.coerce.number().min(0).max(30).optional(),
   sex:           z.enum(["Male", "Female", "Unknown"] as const),
   colorMarkings: z.string().optional(),
-  healthNotes:   z.string().optional(),
+  intakeNotes:   z.string().optional(),
 })
 
 export type AnimalCreateInput = z.infer<typeof AnimalCreateSchema>

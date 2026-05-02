@@ -106,6 +106,7 @@ model Animal {
   ageYears      Float?
   sex           String
   colorMarkings String?
+  intakeNotes   String?
   intakeDate    DateTime             @default(now())
   status        AnimalStatus         @default(INTAKE)
   primaryPhoto  String?
