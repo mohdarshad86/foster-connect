@@ -99,6 +99,43 @@ export async function PATCH(
       newStatus = "DENIED"
     }
 
+    // Rescue Lead adoption approval gate: block if unresolved Critical alerts exist
+    if (body.status === "APPROVED" && session.user.role === "RESCUE_LEAD") {
+      const app = await prisma.adopterApplication.findUnique({
+        where:  { id },
+        select: { animalId: true },
+      })
+      if (app) {
+        const blockers = await prisma.medicalAlert.count({
+          where: { animalId: app.animalId, severity: "CRITICAL", isResolved: false },
+        })
+        if (blockers > 0) {
+          return NextResponse.json(
+            { error: "Unresolved Critical Medical Alerts block adoption approval" },
+            { status: 409 },
+          )
+        }
+        newStatus = "APPROVED"
+        data.decidedById = session.user.id
+        data.decidedAt   = new Date()
+        // Auto-advance animal to ADOPTED
+        await prisma.animal.update({
+          where: { id: app.animalId },
+          data:  { status: "ADOPTED" },
+        })
+      }
+    }
+
+    // Rescue Lead deny decision
+    if (body.status === "DENIED" && session.user.role === "RESCUE_LEAD") {
+      newStatus            = "DENIED"
+      data.decidedById     = session.user.id
+      data.decidedAt       = new Date()
+      if (typeof body.decisionNotes === "string") {
+        data.decisionNotes = body.decisionNotes || null
+      }
+    }
+
     data.status = newStatus
 
     const updated = await prisma.adopterApplication.update({

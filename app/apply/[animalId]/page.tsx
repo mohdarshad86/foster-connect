@@ -1,30 +1,46 @@
-import { notFound } from "next/navigation"
-import { prisma } from "@/lib/prisma"
-import { ApplicationForm } from "@/components/apply/ApplicationForm"
-import { PawPrint } from "lucide-react"
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { ApplicationForm } from "@/components/apply/ApplicationForm";
+import { PawPrint } from "lucide-react";
+
+const objectIdPattern = /^[a-f0-9]{24}$/i;
 
 interface Props {
-  params: Promise<{ animalId: string }>
+  params: Promise<{ animalId: string }>;
 }
 
 export default async function ApplyPage({ params }: Props) {
-  const { animalId } = await params
+  const { animalId } = await params;
 
-  const animal = await prisma.animal.findUnique({
-    where:  { id: animalId },
-    select: {
-      id:           true,
-      name:         true,
-      species:      true,
-      breed:        true,
-      status:       true,
-      primaryPhoto: true,
-    },
-  })
+  if (!objectIdPattern.test(animalId)) {
+    notFound();
+  }
 
-  if (!animal) notFound()
+  let animal;
 
-  const isAvailable = animal.status === "ADOPTION_READY"
+  try {
+    animal = await prisma.animal.findUnique({
+      where: { id: animalId },
+      select: {
+        id: true,
+        name: true,
+        species: true,
+        breed: true,
+        status: true,
+        primaryPhoto: true,
+      },
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code === "P2023") {
+      notFound();
+    }
+
+    throw error;
+  }
+
+  if (!animal) notFound();
+
+  const isAvailable = animal.status === "ADOPTION_READY";
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
@@ -55,7 +71,8 @@ export default async function ApplyPage({ params }: Props) {
           <div className="px-6 py-5">
             <h1 className="text-2xl font-bold text-slate-900">{animal.name}</h1>
             <p className="text-sm text-slate-500 mt-0.5">
-              {animal.species}{animal.breed ? ` · ${animal.breed}` : ""}
+              {animal.species}
+              {animal.breed ? ` · ${animal.breed}` : ""}
             </p>
           </div>
         </div>
@@ -93,5 +110,5 @@ export default async function ApplyPage({ params }: Props) {
         </p>
       </div>
     </div>
-  )
+  );
 }
