@@ -1,4 +1,4 @@
-import type { AnimalStatus } from "@prisma/client"
+import type { AnimalStatus, ApplicationStatus } from "@prisma/client"
 import { ValidationError } from "@/lib/permissions"
 
 // ---------------------------------------------------------------------------
@@ -29,3 +29,10 @@ export function assertValidTransition(
 export function validNextStatuses(current: AnimalStatus): AnimalStatus[] {
   return VALID_TRANSITIONS[current] ?? []
 }
+
+// ---------------------------------------------------------------------------
+// Application status groups — single source of truth consumed by dashboard,
+// applications list page, and the API route.
+// ---------------------------------------------------------------------------
+
+export const ACTIVE_APPLICATION_STATUSES: ApplicationStatus[] = ["SUBMITTED", "UNDER_REVIEW"]

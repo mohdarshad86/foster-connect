@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { formatDate } from "@/lib/utils"
+import { ACTIVE_APPLICATION_STATUSES } from "@/lib/statusMachine"
 import { StatCard } from "@/components/ui/StatCard"
 import { Card, CardRow, CardEmpty } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -17,8 +18,9 @@ export async function AdoptionCounselorDashboard({ userId }: Props) {
   const [myApplications, upcomingMeetGreets] = await Promise.all([
     prisma.adopterApplication.findMany({
       where: {
-        counselorId: userId,
-        status: { in: ["SUBMITTED", "UNDER_REVIEW"] },
+        // Shared-queue query — no counselorId filter.
+        // New submissions have counselorId = null until claimed; all must be visible here.
+        status: { in: ACTIVE_APPLICATION_STATUSES },
       },
       include: {
         animal: { select: { id: true, name: true, species: true } },
@@ -93,7 +95,7 @@ export async function AdoptionCounselorDashboard({ userId }: Props) {
           }
         >
           {myApplications.length === 0 ? (
-            <CardEmpty message="No active applications assigned to you." />
+            <CardEmpty message="No active applications at the moment." />
           ) : (
             myApplications.map((app) => (
               <CardRow key={app.id}>

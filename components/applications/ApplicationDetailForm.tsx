@@ -276,7 +276,7 @@ export function ApplicationDetailForm({ application }: Props) {
 
       {(isCounselor || isLead) && (
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-5 space-y-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-800">
                 Schedule Meet &amp; Greet
@@ -293,7 +293,7 @@ export function ApplicationDetailForm({ application }: Props) {
             )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-[minmax(0,18rem)_auto] md:items-end">
+          <div className="flex flex-col gap-3">
             <Input
               label="Meet &amp; Greet time"
               type="datetime-local"
@@ -301,14 +301,16 @@ export function ApplicationDetailForm({ application }: Props) {
               onChange={(e) => setMeetGreetAt(e.target.value)}
               hint="Native datetime picker, future time only"
             />
-            <Button
-              size="sm"
-              loading={meetGreetSaving}
-              disabled={!meetGreetAt}
-              onClick={handleMeetGreetSave}
-            >
-              Confirm
-            </Button>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                loading={meetGreetSaving}
+                disabled={!meetGreetAt}
+                onClick={handleMeetGreetSave}
+              >
+                Confirm
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs">

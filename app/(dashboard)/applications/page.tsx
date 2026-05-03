@@ -1,8 +1,9 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+import { ACTIVE_APPLICATION_STATUSES } from "@/lib/statusMachine"
 import { ApplicationTable } from "@/components/applications/ApplicationTable"
-import type { ApplicationStatus, Role } from "@prisma/client"
+import type { Role } from "@prisma/client"
 
 export default async function ApplicationsPage() {
   const session = await auth()
@@ -15,7 +16,7 @@ export default async function ApplicationsPage() {
 
   // Server-render initial "active" tab (SUBMITTED + UNDER_REVIEW)
   const applications = await prisma.adopterApplication.findMany({
-    where:   { status: { in: ["SUBMITTED", "UNDER_REVIEW"] as ApplicationStatus[] } },
+    where:   { status: { in: ACTIVE_APPLICATION_STATUSES } },
     orderBy: { submittedAt: "desc" },
     select: {
       id:             true,

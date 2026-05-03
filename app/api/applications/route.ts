@@ -5,6 +5,7 @@ import { requireRole, apiError } from "@/lib/permissions"
 import { ApplicationCreateSchema } from "@/lib/validators/application"
 import { isRateLimited } from "@/lib/rateLimit"
 import { sendNewApplicationEmail } from "@/lib/mailer"
+import { ACTIVE_APPLICATION_STATUSES } from "@/lib/statusMachine"
 import type { ApplicationStatus } from "@prisma/client"
 
 const ALL_STATUSES: ApplicationStatus[] = [
@@ -28,13 +29,13 @@ export async function GET(req: NextRequest) {
 
     let statusFilter: ApplicationStatus | ApplicationStatus[] | undefined
     if (statusParam === "active") {
-      statusFilter = ["SUBMITTED", "UNDER_REVIEW"]
+      statusFilter = ACTIVE_APPLICATION_STATUSES
     } else if (statusParam === "all") {
       statusFilter = undefined // no filter
     } else if (ALL_STATUSES.includes(statusParam as ApplicationStatus)) {
       statusFilter = statusParam as ApplicationStatus
     } else {
-      statusFilter = ["SUBMITTED", "UNDER_REVIEW"]
+      statusFilter = ACTIVE_APPLICATION_STATUSES
     }
 
     const applications = await prisma.adopterApplication.findMany({

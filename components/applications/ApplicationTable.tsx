@@ -1,72 +1,82 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import Link from "next/link"
-import { cn } from "@/lib/utils"
-import { ApplicationStatusBadge } from "@/components/applications/ApplicationStatusBadge"
-import type { ApplicationStatus } from "@prisma/client"
+import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { ApplicationStatusBadge } from "@/components/applications/ApplicationStatusBadge";
+import type { ApplicationStatus } from "@prisma/client";
 
 interface ApplicationRow {
-  id:            string
-  applicantName: string
-  applicantEmail: string
-  status:        ApplicationStatus
-  submittedAt:   string
-  counselor:     { id: string; name: string } | null
-  animal:        { id: string; name: string }
+  id: string;
+  applicantName: string;
+  applicantEmail: string;
+  status: ApplicationStatus;
+  submittedAt: string;
+  counselor: { id: string; name: string } | null;
+  animal: { id: string; name: string };
 }
 
 interface Tab {
-  label:  string
-  param:  string   // value passed to ?status=
+  label: string;
+  param: string; // value passed to ?status=
 }
 
 const TABS: Tab[] = [
-  { label: "Active",        param: "active"                },
-  { label: "Submitted",     param: "SUBMITTED"             },
-  { label: "Under Review",  param: "UNDER_REVIEW"          },
-  { label: "Meet & Greet",  param: "MEET_GREET_SCHEDULED"  },
-  { label: "Recommended",   param: "RECOMMENDED"           },
-  { label: "Approved",      param: "APPROVED"              },
-  { label: "Denied",        param: "DENIED"                },
-  { label: "Waitlisted",    param: "WAITLISTED"            },
-  { label: "All",           param: "all"                   },
-]
+  { label: "Active", param: "active" },
+  { label: "Submitted", param: "SUBMITTED" },
+  { label: "Under Review", param: "UNDER_REVIEW" },
+  { label: "Meet & Greet", param: "MEET_GREET_SCHEDULED" },
+  { label: "Recommended", param: "RECOMMENDED" },
+  { label: "Approved", param: "APPROVED" },
+  { label: "Denied", param: "DENIED" },
+  { label: "Waitlisted", param: "WAITLISTED" },
+  { label: "All", param: "all" },
+];
 
 interface Props {
-  initialApplications: ApplicationRow[]
-  initialTab?:         string
+  initialApplications: ApplicationRow[];
+  initialTab?: string;
 }
 
-export function ApplicationTable({ initialApplications, initialTab = "active" }: Props) {
-  const [activeTab,    setActiveTab]    = useState(initialTab)
-  const [applications, setApplications] = useState<ApplicationRow[]>(initialApplications)
-  const [loading,      setLoading]      = useState(false)
+export function ApplicationTable({
+  initialApplications,
+  initialTab = "active",
+}: Props) {
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [applications, setApplications] =
+    useState<ApplicationRow[]>(initialApplications);
+  const [loading, setLoading] = useState(false);
+  const hasMounted = useRef(false);
 
   const fetchTab = useCallback(async (param: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const res = await fetch(`/api/applications?status=${param}`)
-      if (!res.ok) return
-      const data = await res.json() as ApplicationRow[]
-      setApplications(data)
+      const res = await fetch(`/api/applications?status=${param}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as ApplicationRow[];
+      setApplications(data);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     // Skip initial fetch — we already have server-rendered data for the default tab
-    if (activeTab !== initialTab) {
-      fetchTab(activeTab)
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
+
+    fetchTab(activeTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   function fmt(iso: string) {
     return new Date(iso).toLocaleDateString("en-US", {
-      month: "short", day: "numeric", year: "numeric",
-    })
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   }
 
   return (
@@ -118,8 +128,12 @@ export function ApplicationTable({ initialApplications, initialTab = "active" }:
                   className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors"
                 >
                   <td className="px-5 py-3">
-                    <p className="font-medium text-slate-800">{app.applicantName}</p>
-                    <p className="text-xs text-slate-400">{app.applicantEmail}</p>
+                    <p className="font-medium text-slate-800">
+                      {app.applicantName}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {app.applicantEmail}
+                    </p>
                   </td>
                   <td className="px-5 py-3">
                     <Link
@@ -137,10 +151,13 @@ export function ApplicationTable({ initialApplications, initialTab = "active" }:
                     <ApplicationStatusBadge status={app.status} />
                   </td>
                   <td className="px-5 py-3 text-slate-500 text-xs">
-                    {app.counselor
-                      ? <span className="text-slate-700">{app.counselor.name}</span>
-                      : <span className="italic text-slate-400">Unclaimed</span>
-                    }
+                    {app.counselor ? (
+                      <span className="text-slate-700">
+                        {app.counselor.name}
+                      </span>
+                    ) : (
+                      <span className="italic text-slate-400">Unclaimed</span>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-right">
                     <Link
@@ -157,5 +174,5 @@ export function ApplicationTable({ initialApplications, initialTab = "active" }:
         )}
       </div>
     </div>
-  )
+  );
 }
