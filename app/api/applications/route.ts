@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { requireRole, apiError } from "@/lib/permissions"
 import { ApplicationCreateSchema } from "@/lib/validators/application"
 import { isRateLimited } from "@/lib/rateLimit"
+import { sendNewApplicationEmail } from "@/lib/mailer"
 import type { ApplicationStatus } from "@prisma/client"
 
 const ALL_STATUSES: ApplicationStatus[] = [
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
     // ── Animal status check ──────────────────────────────────────────────────
     const animal = await prisma.animal.findUnique({
       where:  { id: animalId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, name: true },
     })
 
     if (!animal) {
@@ -143,10 +144,26 @@ export async function POST(req: NextRequest) {
         householdNotes:   householdNotes   || null,
         status: "SUBMITTED",
       },
-      select: { id: true },
+      select: { id: true, submittedAt: true },
     })
 
-    // TODO Story 19: trigger email notification to Adoption Counselor here
+    // ── Notify all active Adoption Counselors ────────────────────────────────
+    // Isolated try/catch: email failure must never break the 201 response.
+    try {
+      const counselors = await prisma.user.findMany({
+        where:  { role: "ADOPTION_COUNSELOR", isActive: true },
+        select: { email: true },
+      })
+      await sendNewApplicationEmail({
+        animalName:    animal.name,
+        applicantName,
+        applicationId: application.id,
+        submittedAt:   application.submittedAt,
+        to:            counselors.map((c) => c.email),
+      })
+    } catch (notifyErr) {
+      console.error("[mailer] Failed to notify counselors of new application:", notifyErr)
+    }
 
     return NextResponse.json(application, { status: 201 })
   } catch (err) {

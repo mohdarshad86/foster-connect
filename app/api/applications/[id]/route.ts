@@ -2,8 +2,19 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { requireRole, apiError, NotFoundError } from "@/lib/permissions"
+import {
+  sendMeetGreetEmail,
+  sendRecommendationEmail,
+  sendAdoptionDecisionEmail,
+} from "@/lib/mailer"
+import type { Recommendation, ApplicationStatus } from "@prisma/client"
 
 const HOME_CHECK_STATUSES = ["Pending", "Passed", "Failed"] as const
+
+const VALID_RECOMMENDATIONS = new Set<Recommendation>(["APPROVE", "DENY", "WAITLIST"])
+
+// Statuses from which a recommendation can be submitted (includes RECOMMENDED for re-submission)
+const RECOMMENDATION_ALLOWED = new Set(["MEET_GREET_SCHEDULED", "UNDER_REVIEW", "RECOMMENDED"])
 
 // ---------------------------------------------------------------------------
 // GET /api/applications/[id]
@@ -41,12 +52,14 @@ export async function GET(
 
 // ---------------------------------------------------------------------------
 // PATCH /api/applications/[id]
-// Accepted body fields: screeningNotes, homeCheckStatus
 //
-// Side effects:
-//   - Auto-transitions SUBMITTED → UNDER_REVIEW on first edit
-//   - Sets counselorId to the current user (claim)
-//   - If homeCheckStatus === 'Failed' and role is ADOPTION_COUNSELOR → DENIED
+// Four branches dispatched by payload shape:
+//   1. "meetGreetAt" in body  → schedule Meet & Greet     (COUNSELOR + LEAD)
+//   2. "recommendation" in body → submit recommendation   (COUNSELOR + LEAD)
+//   3. "status": APPROVED|DENIED → final decision         (LEAD only)
+//   4. else                   → screening notes / home check (existing logic)
+//
+// Terminal guard: APPROVED or DENIED applications reject all mutations (403).
 // ---------------------------------------------------------------------------
 export async function PATCH(
   req: NextRequest,
@@ -59,22 +72,252 @@ export async function PATCH(
     const { id } = await params
     const body = await req.json() as Record<string, unknown>
 
+    // ── Load current state (expanded — feeds all branches) ────────────────────
     const current = await prisma.adopterApplication.findUnique({
-      where:  { id },
-      select: { id: true, status: true },
+      where: { id },
+      select: {
+        id:             true,
+        status:         true,
+        animalId:       true,
+        applicantName:  true,
+        applicantEmail: true,
+        counselorId:    true,
+        animal:         { select: { id: true, name: true } },
+      },
     })
     if (!current) throw new NotFoundError("Application")
 
-    // Build update data incrementally
+    // ── Terminal guard ────────────────────────────────────────────────────────
+    if (current.status === "APPROVED" || current.status === "DENIED") {
+      return NextResponse.json({ error: "Application is closed." }, { status: 403 })
+    }
+
+    // =========================================================================
+    // Branch 1 — Meet & Greet
+    // =========================================================================
+    if ("meetGreetAt" in body) {
+      const date = new Date(body.meetGreetAt as string)
+      if (isNaN(date.getTime()) || date <= new Date()) {
+        return NextResponse.json(
+          { error: "Meet & Greet must be scheduled in the future." },
+          { status: 400 },
+        )
+      }
+
+      const updated = await prisma.adopterApplication.update({
+        where: { id },
+        data: {
+          meetGreetAt: date,
+          status:      "MEET_GREET_SCHEDULED",
+          counselorId: session.user.id,
+        },
+        include: {
+          counselor: { select: { id: true, name: true } },
+          animal: {
+            include: {
+              fosterParent: { select: { name: true, email: true } },
+            },
+          },
+        },
+      })
+
+      // Email Foster Parent (guard: foster may not be assigned)
+      const fp = updated.animal.fosterParent
+      if (fp?.email) {
+        await sendMeetGreetEmail({
+          animalName:    updated.animal.name,
+          applicantName: current.applicantName,
+          meetGreetAt:   date,
+          scheduledBy:   session.user.name ?? "Staff",
+          to:            fp.email,
+        })
+      }
+
+      return NextResponse.json(updated)
+    }
+
+    // =========================================================================
+    // Branch 2 — Recommendation
+    // =========================================================================
+    if ("recommendation" in body) {
+      if (!RECOMMENDATION_ALLOWED.has(current.status)) {
+        return NextResponse.json(
+          { error: "Recommendation requires status MEET_GREET_SCHEDULED, UNDER_REVIEW, or RECOMMENDED." },
+          { status: 409 },
+        )
+      }
+
+      if (!VALID_RECOMMENDATIONS.has(body.recommendation as Recommendation)) {
+        return NextResponse.json(
+          { error: "Invalid recommendation value." },
+          { status: 400 },
+        )
+      }
+
+      const updated = await prisma.adopterApplication.update({
+        where: { id },
+        data: {
+          recommendation: body.recommendation as Recommendation,
+          recommendedAt:  new Date(),
+          status:         "RECOMMENDED",
+          counselorId:    session.user.id,
+        },
+        include: {
+          counselor: { select: { id: true, name: true } },
+          animal:    { select: { id: true, name: true } },
+        },
+      })
+
+      // Email all active Rescue Leads
+      const leads = await prisma.user.findMany({
+        where:  { role: "RESCUE_LEAD", isActive: true },
+        select: { email: true },
+      })
+      await sendRecommendationEmail({
+        animalName:     current.animal.name,
+        applicantName:  current.applicantName,
+        recommendation: String(body.recommendation),
+        counselorName:  session.user.name ?? "Counselor",
+        applicationId:  id,
+        to:             leads.map((l) => l.email),
+      })
+
+      return NextResponse.json(updated)
+    }
+
+    // =========================================================================
+    // Branch 3 — Final Decision (RESCUE_LEAD only)
+    // =========================================================================
+    if (body.status === "APPROVED" || body.status === "DENIED") {
+      requireRole(session, ["RESCUE_LEAD"]) // LEAD only — re-check here
+
+      if (current.status !== "RECOMMENDED") {
+        return NextResponse.json(
+          { error: "Final decision requires status RECOMMENDED." },
+          { status: 409 },
+        )
+      }
+
+      const decisionNotes =
+        typeof body.decisionNotes === "string" ? body.decisionNotes || null : null
+
+      // ── APPROVED — transactional path ──────────────────────────────────────
+      if (body.status === "APPROVED") {
+        try {
+          const approvedApp = await prisma.$transaction(async (tx) => {
+            // Re-read inside the transaction to prevent a double-approval race
+            const fresh = await tx.adopterApplication.findUnique({
+              where:  { id },
+              select: { status: true, animalId: true },
+            })
+            if (!fresh || fresh.status !== "RECOMMENDED") {
+              throw new Error("STALE_STATE")
+            }
+
+            // Critical alert gate — enforced inside transaction
+            const blockers = await tx.medicalAlert.count({
+              where: { animalId: fresh.animalId, severity: "CRITICAL", isResolved: false },
+            })
+            if (blockers > 0) {
+              throw new Error("ALERT_BLOCK")
+            }
+
+            // Advance animal to ADOPTED
+            await tx.animal.update({
+              where: { id: fresh.animalId },
+              data:  { status: "ADOPTED" },
+            })
+
+            // Close all competing active applications for this animal
+            await tx.adopterApplication.updateMany({
+              where: {
+                animalId: fresh.animalId,
+                id:       { not: id },
+                status:   { in: ["SUBMITTED", "UNDER_REVIEW", "MEET_GREET_SCHEDULED", "RECOMMENDED"] },
+              },
+              data: { status: "DENIED", decisionNotes: "Animal adopted" },
+            })
+
+            // Approve this application
+            return tx.adopterApplication.update({
+              where: { id },
+              data: {
+                status:       "APPROVED",
+                decidedById:  session.user.id,
+                decidedAt:    new Date(),
+                decisionNotes,
+                // counselorId intentionally not overwritten
+              },
+              include: {
+                counselor: { select: { id: true, name: true } },
+                animal:    { select: { id: true, name: true } },
+              },
+            })
+          })
+
+          // Email applicant — after transaction commits
+          await sendAdoptionDecisionEmail({
+            applicantName: current.applicantName,
+            animalName:    current.animal.name,
+            approved:      true,
+            to:            current.applicantEmail,
+          })
+
+          return NextResponse.json(approvedApp)
+
+        } catch (txErr) {
+          if (txErr instanceof Error && txErr.message === "STALE_STATE") {
+            return NextResponse.json(
+              { error: "Application was already decided." },
+              { status: 409 },
+            )
+          }
+          if (txErr instanceof Error && txErr.message === "ALERT_BLOCK") {
+            return NextResponse.json(
+              { error: "Unresolved Critical Medical Alerts block adoption approval." },
+              { status: 409 },
+            )
+          }
+          throw txErr // unexpected — re-throw to outer catch
+        }
+      }
+
+      // ── DENIED ─────────────────────────────────────────────────────────────
+      const denied = await prisma.adopterApplication.update({
+        where: { id },
+        data: {
+          status:      "DENIED",
+          decidedById: session.user.id,
+          decidedAt:   new Date(),
+          decisionNotes,
+          // counselorId intentionally not overwritten
+        },
+        include: {
+          counselor: { select: { id: true, name: true } },
+          animal:    { select: { id: true, name: true } },
+        },
+      })
+
+      await sendAdoptionDecisionEmail({
+        applicantName: current.applicantName,
+        animalName:    current.animal.name,
+        approved:      false,
+        to:            current.applicantEmail,
+      })
+
+      return NextResponse.json(denied)
+    }
+
+    // =========================================================================
+    // Branch 4 — Screening (existing logic, preserved exactly)
+    // =========================================================================
     type UpdateData = Parameters<typeof prisma.adopterApplication.update>[0]["data"]
     const data: UpdateData = {}
 
-    // Screening notes
     if (typeof body.screeningNotes === "string") {
       data.screeningNotes = body.screeningNotes || null
     }
 
-    // Home check status
     if (
       typeof body.homeCheckStatus === "string" &&
       HOME_CHECK_STATUSES.includes(body.homeCheckStatus as typeof HOME_CHECK_STATUSES[number])
@@ -82,58 +325,18 @@ export async function PATCH(
       data.homeCheckStatus = body.homeCheckStatus
     }
 
-    // Always claim the application for the editing user
+    // Claim: counselorId always set in screening branch
     data.counselorId = session.user.id
 
     // Auto-transition SUBMITTED → UNDER_REVIEW on first edit
-    let newStatus = current.status
+    let newStatus: ApplicationStatus = current.status
     if (current.status === "SUBMITTED") {
       newStatus = "UNDER_REVIEW"
     }
 
     // Counselor can directly deny when home check fails
-    if (
-      body.homeCheckStatus === "Failed" &&
-      session.user.role === "ADOPTION_COUNSELOR"
-    ) {
+    if (body.homeCheckStatus === "Failed" && session.user.role === "ADOPTION_COUNSELOR") {
       newStatus = "DENIED"
-    }
-
-    // Rescue Lead adoption approval gate: block if unresolved Critical alerts exist
-    if (body.status === "APPROVED" && session.user.role === "RESCUE_LEAD") {
-      const app = await prisma.adopterApplication.findUnique({
-        where:  { id },
-        select: { animalId: true },
-      })
-      if (app) {
-        const blockers = await prisma.medicalAlert.count({
-          where: { animalId: app.animalId, severity: "CRITICAL", isResolved: false },
-        })
-        if (blockers > 0) {
-          return NextResponse.json(
-            { error: "Unresolved Critical Medical Alerts block adoption approval" },
-            { status: 409 },
-          )
-        }
-        newStatus = "APPROVED"
-        data.decidedById = session.user.id
-        data.decidedAt   = new Date()
-        // Auto-advance animal to ADOPTED
-        await prisma.animal.update({
-          where: { id: app.animalId },
-          data:  { status: "ADOPTED" },
-        })
-      }
-    }
-
-    // Rescue Lead deny decision
-    if (body.status === "DENIED" && session.user.role === "RESCUE_LEAD") {
-      newStatus            = "DENIED"
-      data.decidedById     = session.user.id
-      data.decidedAt       = new Date()
-      if (typeof body.decisionNotes === "string") {
-        data.decisionNotes = body.decisionNotes || null
-      }
     }
 
     data.status = newStatus

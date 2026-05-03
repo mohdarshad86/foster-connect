@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { requireRole, apiError, NotFoundError } from "@/lib/permissions"
+import { sendMedicalAlertEmail } from "@/lib/mailer"
 import { z } from "zod"
 
 const AlertCreateSchema = z.object({
@@ -66,7 +67,7 @@ export async function POST(
 
     const animal = await prisma.animal.findUnique({
       where:  { id: animalId },
-      select: { id: true },
+      select: { id: true, name: true },
     })
     if (!animal) throw new NotFoundError("Animal")
 
@@ -81,6 +82,26 @@ export async function POST(
       },
       include: { createdBy: { select: { name: true } } },
     })
+
+    // ── Notify Rescue Leads on CRITICAL alerts ───────────────────────────────
+    // Isolated try/catch: email failure must never break the 201 response.
+    if (body.severity === "CRITICAL") {
+      try {
+        const leads = await prisma.user.findMany({
+          where:  { role: "RESCUE_LEAD", isActive: true },
+          select: { email: true },
+        })
+        await sendMedicalAlertEmail({
+          animalName:  animal.name,
+          animalId,
+          description: body.description,
+          placedBy:    session!.user.name ?? "Staff",
+          to:          leads.map((l) => l.email),
+        })
+      } catch (notifyErr) {
+        console.error("[mailer] Failed to notify leads of critical alert:", notifyErr)
+      }
+    }
 
     return NextResponse.json(alert, { status: 201 })
   } catch (err) {
