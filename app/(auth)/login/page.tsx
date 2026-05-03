@@ -1,24 +1,22 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { signIn } from "next-auth/react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
-import { PawPrint } from "lucide-react"
+import { useState } from "react";
+import { getSession, signIn } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { PawPrint } from "lucide-react";
 
 const loginSchema = z.object({
-  email:    z.string().email("Enter a valid email address"),
+  email: z.string().email("Enter a valid email address"),
   password: z.string().min(1, "Password is required"),
-})
-type LoginInput = z.infer<typeof loginSchema>
+});
+type LoginInput = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const {
     register,
@@ -26,25 +24,31 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
-  })
+  });
 
   async function onSubmit(data: LoginInput) {
-    setServerError(null)
+    setServerError(null);
 
-    const result = await signIn("credentials", {
-      email:    data.email,
-      password: data.password,
-      redirect: false,
-    })
+    try {
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
 
-    if (!result || result.error) {
-      // Never reveal which field is wrong — AC from Story 02
-      setServerError("Invalid email or password")
-      return
+      if (!result || result.error) {
+        // Never reveal which field is wrong — AC from Story 02
+        setServerError("Invalid email or password");
+        return;
+      }
+
+      const session = await getSession();
+      window.location.assign(
+        session?.user.mustChangePassword ? "/change-password" : "/dashboard",
+      );
+    } catch {
+      setServerError("Unable to sign in right now. Please try again.");
     }
-
-    router.push("/dashboard")
-    router.refresh()
   }
 
   return (
@@ -55,8 +59,12 @@ export default function LoginPage() {
           <PawPrint className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-900 leading-none">Foster Connect</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Animal Rescue Platform</p>
+          <h1 className="text-xl font-bold text-slate-900 leading-none">
+            Foster Connect
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Animal Rescue Platform
+          </p>
         </div>
       </div>
 
@@ -104,5 +112,5 @@ export default function LoginPage() {
         </Button>
       </form>
     </div>
-  )
+  );
 }
