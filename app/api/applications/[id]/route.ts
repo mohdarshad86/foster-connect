@@ -132,16 +132,20 @@ export async function PATCH(
         },
       });
 
-      // Email Foster Parent (guard: foster may not be assigned)
-      const fp = updated.animal.fosterParent;
-      if (fp?.email) {
-        await sendMeetGreetEmail({
-          animalName: updated.animal.name,
-          applicantName: current.applicantName,
-          meetGreetAt: date,
-          scheduledBy: session.user.name ?? "Staff",
-          to: fp.email,
-        });
+      // Email Foster Parent — isolated: failure must never break the 200 response
+      try {
+        const fp = updated.animal.fosterParent;
+        if (fp?.email) {
+          await sendMeetGreetEmail({
+            animalName: updated.animal.name,
+            applicantName: current.applicantName,
+            meetGreetAt: date,
+            scheduledBy: session.user.name ?? "Staff",
+            to: fp.email,
+          });
+        }
+      } catch (notifyErr) {
+        console.error("[mailer] Failed to send Meet & Greet email:", notifyErr);
       }
 
       return NextResponse.json(updated);
@@ -182,19 +186,23 @@ export async function PATCH(
         },
       });
 
-      // Email all active Rescue Leads
-      const leads = await prisma.user.findMany({
-        where: { role: "RESCUE_LEAD", isActive: true },
-        select: { email: true },
-      });
-      await sendRecommendationEmail({
-        animalName: current.animal.name,
-        applicantName: current.applicantName,
-        recommendation: String(body.recommendation),
-        counselorName: session.user.name ?? "Counselor",
-        applicationId: id,
-        to: leads.map((l) => l.email),
-      });
+      // Email all active Rescue Leads — isolated: failure must never break the 200 response
+      try {
+        const leads = await prisma.user.findMany({
+          where: { role: "RESCUE_LEAD", isActive: true },
+          select: { email: true },
+        });
+        await sendRecommendationEmail({
+          animalName: current.animal.name,
+          applicantName: current.applicantName,
+          recommendation: String(body.recommendation),
+          counselorName: session.user.name ?? "Counselor",
+          applicationId: id,
+          to: leads.map((l) => l.email),
+        });
+      } catch (notifyErr) {
+        console.error("[mailer] Failed to notify leads of recommendation:", notifyErr);
+      }
 
       return NextResponse.json(updated);
     }
@@ -282,13 +290,17 @@ export async function PATCH(
             });
           });
 
-          // Email applicant — after transaction commits
-          await sendAdoptionDecisionEmail({
-            applicantName: current.applicantName,
-            animalName: current.animal.name,
-            approved: true,
-            to: current.applicantEmail,
-          });
+          // Email applicant — isolated: failure must never break the 200 response
+          try {
+            await sendAdoptionDecisionEmail({
+              applicantName: current.applicantName,
+              animalName: current.animal.name,
+              approved: true,
+              to: current.applicantEmail,
+            });
+          } catch (notifyErr) {
+            console.error("[mailer] Failed to send adoption approval email:", notifyErr);
+          }
 
           return NextResponse.json(approvedApp);
         } catch (txErr) {
@@ -327,12 +339,17 @@ export async function PATCH(
         },
       });
 
-      await sendAdoptionDecisionEmail({
-        applicantName: current.applicantName,
-        animalName: current.animal.name,
-        approved: false,
-        to: current.applicantEmail,
-      });
+      // Email applicant — isolated: failure must never break the 200 response
+      try {
+        await sendAdoptionDecisionEmail({
+          applicantName: current.applicantName,
+          animalName: current.animal.name,
+          approved: false,
+          to: current.applicantEmail,
+        });
+      } catch (notifyErr) {
+        console.error("[mailer] Failed to send adoption denial email:", notifyErr);
+      }
 
       return NextResponse.json(denied);
     }
