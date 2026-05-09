@@ -229,7 +229,140 @@ export async function sendAdoptionDecisionEmail({
 }
 
 // ---------------------------------------------------------------------------
-// Trigger 5: New public application received → all Adoption Counselors
+// Trigger 5: Animal assigned → Foster Parent (Story 28)
+// ---------------------------------------------------------------------------
+
+export async function sendFosterAssignmentEmail({
+  to,
+  fosterName,
+  animalName,
+  animalId,
+  species,
+  breed,
+  ageYears,
+}: {
+  to: string
+  fosterName: string
+  animalName: string
+  animalId: string
+  species: string
+  breed: string | null
+  ageYears: number | null
+}) {
+  const appUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000"
+  const ageLabel = ageYears != null
+    ? `${ageYears} yr${ageYears !== 1 ? "s" : ""}`
+    : "Unknown"
+  const breedLabel = breed ?? "Unknown breed"
+
+  await sendMail({
+    to,
+    subject: `[Foster Connect] New Animal Assigned: ${animalName}`,
+    html: template(`
+      <h2>You Have a New Animal to Foster</h2>
+      <p>Hi ${fosterName},</p>
+      <p>
+        <strong>${animalName}</strong> has been assigned to your care.
+        Please review their profile and prepare for their arrival.
+      </p>
+      <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+        <tr><td style="padding:6px 0;font-weight:600;width:120px;">Animal</td><td>${animalName}</td></tr>
+        <tr><td style="padding:6px 0;font-weight:600;">Species</td><td>${species}</td></tr>
+        <tr><td style="padding:6px 0;font-weight:600;">Breed</td><td>${breedLabel}</td></tr>
+        <tr><td style="padding:6px 0;font-weight:600;">Age</td><td>${ageLabel}</td></tr>
+      </table>
+      <p style="margin-top:20px;">
+        <a href="${appUrl}/animals/${animalId}" style="background:#2563eb;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">
+          View Animal Profile
+        </a>
+      </p>
+    `),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Trigger 6: Application confirmation → adopter (Story 24)
+// ---------------------------------------------------------------------------
+
+export async function sendApplicationConfirmationEmail({
+  to,
+  applicantName,
+  animalName,
+  submittedAt,
+}: {
+  to: string
+  applicantName: string
+  animalName: string
+  submittedAt: Date
+}) {
+  const formatted = submittedAt.toLocaleString("en-US", {
+    weekday: "long", year: "numeric", month: "long",
+    day: "numeric", hour: "numeric", minute: "2-digit",
+  })
+  await sendMail({
+    to,
+    subject: `Your adoption application for ${animalName} has been received`,
+    html: template(`
+      <h2>Application Received ✓</h2>
+      <p>Dear ${applicantName},</p>
+      <p>
+        Thank you for your interest in adopting <strong>${animalName}</strong>.
+        We have received your application and our adoption team will be in touch with you soon.
+      </p>
+      <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+        <tr><td style="padding:6px 0;font-weight:600;width:120px;">Animal</td><td>${animalName}</td></tr>
+        <tr><td style="padding:6px 0;font-weight:600;">Submitted</td><td>${formatted}</td></tr>
+      </table>
+      <p style="margin-top:16px;color:#6b7280;">
+        If you have any questions in the meantime, please reply to this email or contact us directly.
+        We look forward to speaking with you!
+      </p>
+    `),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Trigger 6: Meet & Greet scheduled → adopter (Story 27)
+// ---------------------------------------------------------------------------
+
+export async function sendMeetGreetAdopterEmail({
+  to,
+  applicantName,
+  animalName,
+  meetGreetAt,
+}: {
+  to: string
+  applicantName: string
+  animalName: string
+  meetGreetAt: Date
+}) {
+  const formatted = meetGreetAt.toLocaleString("en-US", {
+    weekday: "long", year: "numeric", month: "long",
+    day: "numeric", hour: "numeric", minute: "2-digit",
+  })
+  await sendMail({
+    to,
+    subject: `Meet & Greet Scheduled — ${animalName}`,
+    html: template(`
+      <h2>Your Meet & Greet is Scheduled!</h2>
+      <p>Dear ${applicantName},</p>
+      <p>
+        Great news — a Meet &amp; Greet has been arranged for your adoption
+        application for <strong>${animalName}</strong>.
+      </p>
+      <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+        <tr><td style="padding:6px 0;font-weight:600;width:120px;">Animal</td><td>${animalName}</td></tr>
+        <tr><td style="padding:6px 0;font-weight:600;">Date &amp; Time</td><td><strong>${formatted}</strong></td></tr>
+      </table>
+      <p style="margin-top:16px;color:#6b7280;">
+        Please contact us to confirm your attendance. We look forward to meeting you!
+      </p>
+    `),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Trigger 7: New public application received → all Adoption Counselors
 // ---------------------------------------------------------------------------
 
 export async function sendNewApplicationEmail({

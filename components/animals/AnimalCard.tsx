@@ -17,11 +17,13 @@ export interface PublicAnimal {
 }
 
 interface Props {
-  animal: PublicAnimal
-  href?:  string
+  animal:  PublicAnimal
+  href?:   string
+  /** Up to 3 personality trait labels from the animal's PersonalityProfile */
+  traits?: string[] | null
 }
 
-export function AnimalCard({ animal, href }: Props) {
+export function AnimalCard({ animal, href, traits }: Props) {
   return (
     <Link
       href={href ?? `/animals/${animal.id}`}
@@ -65,6 +67,20 @@ export function AnimalCard({ animal, href }: Props) {
             </>
           )}
         </div>
+
+        {/* Personality trait pills — max 3, only shown when profile exists */}
+        {traits && traits.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {traits.slice(0, 3).map((trait) => (
+              <span
+                key={trait}
+                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700"
+              >
+                {trait}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   )

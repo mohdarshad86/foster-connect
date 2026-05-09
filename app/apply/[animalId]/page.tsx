@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ApplicationForm } from "@/components/apply/ApplicationForm";
+import { CopyLinkButton } from "@/components/apply/CopyLinkButton";
 import { PawPrint } from "lucide-react";
 
 const objectIdPattern = /^[a-f0-9]{24}$/i;
@@ -69,11 +70,17 @@ export default async function ApplyPage({ params }: Props) {
           )}
 
           <div className="px-6 py-5">
-            <h1 className="text-2xl font-bold text-slate-900">{animal.name}</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              {animal.species}
-              {animal.breed ? ` · ${animal.breed}` : ""}
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">{animal.name}</h1>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {animal.species}
+                  {animal.breed ? ` · ${animal.breed}` : ""}
+                </p>
+              </div>
+              {/* Story 23 — share link button */}
+              <CopyLinkButton />
+            </div>
           </div>
         </div>
 

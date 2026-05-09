@@ -28,11 +28,13 @@ const ROLE_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
 
 // Routes that bypass authentication entirely
 function isPublicRoute(pathname: string, method: string): boolean {
-  if (pathname === "/")                          return true
-  if (pathname.startsWith("/login"))             return true
-  if (pathname.startsWith("/apply"))             return true
-  if (pathname.startsWith("/api/auth"))          return true
-  if (pathname.startsWith("/api/uploads"))       return true
+  if (pathname === "/")                                      return true
+  if (pathname.startsWith("/login"))                         return true
+  if (pathname.startsWith("/apply"))                         return true
+  if (pathname.startsWith("/application-status"))            return true
+  if (pathname.startsWith("/api/auth"))                      return true
+  if (pathname.startsWith("/api/uploads"))                   return true
+  if (pathname.startsWith("/api/application-status"))        return true
   if (pathname === "/api/applications" && method === "POST") return true
   return false
 }

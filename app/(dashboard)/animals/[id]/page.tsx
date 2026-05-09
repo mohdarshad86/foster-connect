@@ -9,6 +9,7 @@ import { AssignFosterForm } from "@/components/animals/AssignFosterForm";
 import { StatusTransitionPanel } from "@/components/animals/StatusTransitionPanel";
 import { AlertBanner } from "@/components/animals/AlertBanner";
 import { PlaceAlertForm } from "@/components/animals/PlaceAlertForm";
+import { FlagConcernForm } from "@/components/animals/FlagConcernForm";
 import {
   AnimalProfileTabs,
   type TabConfig,
@@ -232,6 +233,7 @@ export default async function AnimalProfilePage({ params }: Props) {
         <div className="flex items-center gap-2">
           <AnimalStatusBadge status={animal.status} />
           {canPlaceAlert && <PlaceAlertForm animalId={id} />}
+          {isOwnerFoster && <FlagConcernForm animalId={id} />}
         </div>
       </div>
 

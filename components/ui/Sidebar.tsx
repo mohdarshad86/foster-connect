@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Users,
   Stethoscope,
+  FileText,
 } from "lucide-react";
 import { LogoutButton } from "@/components/ui/LogoutButton";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/animals/new",
     icon: <PlusCircle className="w-4 h-4" />,
     roles: ["RESCUE_LEAD", "INTAKE_SPECIALIST"],
+  },
+  {
+    label: "My Notes",
+    href: "/my-notes",
+    icon: <FileText className="w-4 h-4" />,
+    roles: ["FOSTER_PARENT"],
   },
   {
     label: "Applications",

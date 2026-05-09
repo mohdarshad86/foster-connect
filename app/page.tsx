@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
-import { AnimalCard } from "@/components/animals/AnimalCard"
 import { PawPrint } from "lucide-react"
+import { HomepageGrid } from "@/components/animals/HomepageGrid"
 
 export default async function PublicHomePage() {
   const animals = await prisma.animal.findMany({
@@ -17,13 +17,27 @@ export default async function PublicHomePage() {
       status:       true,
       intakeDate:   true,
       primaryPhoto: true,
+      updatedAt:    true,                          // Story 21 — last-updated timestamp
+      personalityProfile: {                        // Story 22 — trait pills
+        select: { traits: true },
+      },
     },
   })
 
+  // Serialize Dates → strings for client component
   const serialized = animals.map((a) => ({
     ...a,
     intakeDate: a.intakeDate.toISOString(),
+    updatedAt:  a.updatedAt.toISOString(),
   }))
+
+  // Most recent updatedAt across all ADOPTION_READY animals (Story 21)
+  const lastUpdated =
+    animals.length > 0
+      ? animals
+          .reduce((latest, a) => (a.updatedAt > latest ? a.updatedAt : latest), animals[0].updatedAt)
+          .toISOString()
+      : null
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -34,12 +48,20 @@ export default async function PublicHomePage() {
             <PawPrint className="w-5 h-5" />
             <span className="text-slate-900">Foster Connect</span>
           </div>
-          <Link
-            href="/login"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Staff Login
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/application-status"
+              className="text-sm text-slate-600 hover:text-blue-600 transition-colors"
+            >
+              Check application status
+            </Link>
+            <Link
+              href="/login"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Staff Login
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -54,30 +76,9 @@ export default async function PublicHomePage() {
         </p>
       </section>
 
-      {/* Animal grid */}
+      {/* Animal grid with filters, count, and trait pills */}
       <section className="max-w-6xl mx-auto px-6 pb-20">
-        {serialized.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm py-20 text-center">
-            <PawPrint className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-            <p className="text-slate-500 font-medium">No animals available right now.</p>
-            <p className="text-sm text-slate-400 mt-1">Check back soon — new arrivals are added regularly.</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-slate-500 mb-5">
-              {serialized.length} animal{serialized.length !== 1 ? "s" : ""} available for adoption
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {serialized.map((animal) => (
-                <AnimalCard
-                  key={animal.id}
-                  animal={animal}
-                  href={`/apply/${animal.id}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
+        <HomepageGrid animals={serialized} lastUpdated={lastUpdated} />
       </section>
 
       {/* Footer */}

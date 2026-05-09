@@ -4,7 +4,10 @@ import { auth } from "@/lib/auth"
 import { requireRole, apiError } from "@/lib/permissions"
 import { ApplicationCreateSchema } from "@/lib/validators/application"
 import { isRateLimited } from "@/lib/rateLimit"
-import { sendNewApplicationEmail } from "@/lib/mailer"
+import {
+  sendNewApplicationEmail,
+  sendApplicationConfirmationEmail,
+} from "@/lib/mailer"
 import { ACTIVE_APPLICATION_STATUSES } from "@/lib/statusMachine"
 import type { ApplicationStatus } from "@prisma/client"
 
@@ -129,7 +132,11 @@ export async function POST(req: NextRequest) {
 
     if (existing) {
       return NextResponse.json(
-        { error: "An application from this email is already on file for this animal." },
+        {
+          code:       "DUPLICATE_APPLICATION",
+          animalName: animal.name,
+          email:      applicantEmail,
+        },
         { status: 409 },
       )
     }
@@ -148,23 +155,37 @@ export async function POST(req: NextRequest) {
       select: { id: true, submittedAt: true },
     })
 
-    // ── Notify all active Adoption Counselors ────────────────────────────────
-    // Isolated try/catch: email failure must never break the 201 response.
-    try {
-      const counselors = await prisma.user.findMany({
-        where:  { role: "ADOPTION_COUNSELOR", isActive: true },
-        select: { email: true },
-      })
-      await sendNewApplicationEmail({
-        animalName:    animal.name,
-        applicantName,
-        applicationId: application.id,
-        submittedAt:   application.submittedAt,
-        to:            counselors.map((c) => c.email),
-      })
-    } catch (notifyErr) {
-      console.error("[mailer] Failed to notify counselors of new application:", notifyErr)
-    }
+    // ── Fire-and-forget emails (failures must never break the 201 response) ──
+    void (async () => {
+      try {
+        // Story 24 — confirmation to adopter
+        await sendApplicationConfirmationEmail({
+          to:           applicantEmail,
+          applicantName,
+          animalName:   animal.name,
+          submittedAt:  application.submittedAt,
+        })
+      } catch (err) {
+        console.error("[mailer] Failed to send adopter confirmation:", err)
+      }
+
+      try {
+        // Story 39 — notify all active Adoption Counselors
+        const counselors = await prisma.user.findMany({
+          where:  { role: "ADOPTION_COUNSELOR", isActive: true },
+          select: { email: true },
+        })
+        await sendNewApplicationEmail({
+          animalName:    animal.name,
+          applicantName,
+          applicationId: application.id,
+          submittedAt:   application.submittedAt,
+          to:            counselors.map((c) => c.email),
+        })
+      } catch (err) {
+        console.error("[mailer] Failed to notify counselors of new application:", err)
+      }
+    })()
 
     return NextResponse.json(application, { status: 201 })
   } catch (err) {

@@ -4,6 +4,7 @@ import { formatDate } from "@/lib/utils"
 import { StatCard } from "@/components/ui/StatCard"
 import { Card, CardRow, CardEmpty } from "@/components/ui/Card"
 import { AnimalStatusBadge } from "@/components/animals/AnimalStatusBadge"
+import { getWeekMonday } from "@/lib/utils"
 import { PawPrint, AlertTriangle, CheckCircle } from "lucide-react"
 
 interface Props {
@@ -11,15 +12,15 @@ interface Props {
 }
 
 export async function FosterParentDashboard({ userId }: Props) {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const weekStart = getWeekMonday()
 
   const assignedAnimals = await prisma.animal.findMany({
     where: { fosterParentId: userId },
     include: {
       progressNotes: {
-        where: { createdAt: { gte: sevenDaysAgo } },
+        where: { weekOf: { gte: weekStart } },
         take: 1,
-        orderBy: { createdAt: "desc" },
+        orderBy: { weekOf: "desc" },
       },
       medicalAlerts: {
         where: { isResolved: false },
@@ -55,7 +56,7 @@ export async function FosterParentDashboard({ userId }: Props) {
         <StatCard
           label="Notes Overdue"
           value={overdueCount}
-          sublabel="No note in the last 7 days"
+          sublabel="No note submitted this week"
           color={overdueCount > 0 ? "yellow" : "green"}
           icon={<AlertTriangle className="w-5 h-5" />}
         />

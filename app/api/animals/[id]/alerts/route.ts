@@ -53,7 +53,9 @@ export async function GET(
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/animals/[id]/alerts  — Medical Officer + Rescue Lead
+// POST /api/animals/[id]/alerts
+// Medical Officer + Rescue Lead: full access
+// Foster Parent: own assigned animal only; description is auto-prefixed
 // ---------------------------------------------------------------------------
 export async function POST(
   req: NextRequest,
@@ -61,23 +63,37 @@ export async function POST(
 ) {
   try {
     const session = await auth()
-    requireRole(session, ["MEDICAL_OFFICER", "RESCUE_LEAD"])
+    requireRole(session, ["MEDICAL_OFFICER", "RESCUE_LEAD", "FOSTER_PARENT"])
 
     const { id: animalId } = await params
 
     const animal = await prisma.animal.findUnique({
       where:  { id: animalId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, fosterParentId: true },
     })
     if (!animal) throw new NotFoundError("Animal")
 
+    // Foster Parents may only flag concerns for their own assigned animal
+    if (
+      session!.user.role === "FOSTER_PARENT" &&
+      animal.fosterParentId !== session!.user.id
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
     const body = AlertCreateSchema.parse(await req.json())
+
+    // Story 29 — prefix description when a Foster Parent flags a concern
+    const description =
+      session!.user.role === "FOSTER_PARENT"
+        ? `Concern flagged by Foster Parent: ${body.description}`
+        : body.description
 
     const alert = await prisma.medicalAlert.create({
       data: {
         animalId,
         createdById: session!.user.id,
-        description: body.description,
+        description,
         severity:    body.severity,
       },
       include: { createdBy: { select: { name: true } } },

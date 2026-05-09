@@ -16,9 +16,15 @@ interface Props {
   animalId: string
 }
 
+interface DuplicateInfo {
+  animalName: string
+  email: string
+}
+
 export function ApplicationForm({ animalId }: Props) {
   const router = useRouter()
-  const [serverError, setServerError] = useState<string | null>(null)
+  const [serverError, setServerError]   = useState<string | null>(null)
+  const [duplicate, setDuplicate]       = useState<DuplicateInfo | null>(null)
 
   const {
     register,
@@ -31,6 +37,7 @@ export function ApplicationForm({ animalId }: Props) {
 
   async function onSubmit(data: ApplicationCreateInput) {
     setServerError(null)
+    setDuplicate(null)
 
     const res = await fetch("/api/applications", {
       method:  "POST",
@@ -46,9 +53,14 @@ export function ApplicationForm({ animalId }: Props) {
     }
 
     const json = await res.json().catch(() => ({}))
-    setServerError(
-      json.error ?? "Something went wrong. Please try again.",
-    )
+
+    // Story 25 — structured duplicate response
+    if (res.status === 409 && json.code === "DUPLICATE_APPLICATION") {
+      setDuplicate({ animalName: json.animalName, email: json.email })
+      return
+    }
+
+    setServerError(json.error ?? "Something went wrong. Please try again.")
   }
 
   return (
@@ -98,6 +110,16 @@ export function ApplicationForm({ animalId }: Props) {
         error={errors.householdNotes?.message}
         {...register("householdNotes")}
       />
+
+      {/* Story 25 — friendly duplicate notice */}
+      {duplicate && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
+          <p className="text-sm text-blue-800">
+            You&apos;ve already applied for <strong>{duplicate.animalName}</strong>.
+            We&apos;ll be in touch at <strong>{duplicate.email}</strong>.
+          </p>
+        </div>
+      )}
 
       {serverError && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3">

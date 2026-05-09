@@ -50,6 +50,25 @@ export function formatDateTimeShort(date: Date | string): string {
 }
 
 /**
+ * Format a Date as a human-readable relative time string.
+ * e.g. "just now", "3 hours ago", "2 days ago"
+ */
+export function formatRelativeTime(date: Date | string): string {
+  const now = new Date()
+  const then = new Date(date)
+  const diffMs = now.getTime() - then.getTime()
+  const diffMins = Math.floor(diffMs / 60_000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1)   return "just now"
+  if (diffMins < 60)  return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`
+  if (diffDays < 7)   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`
+  return formatDate(then)
+}
+
+/**
  * Return the ISO date of the Monday of the week containing `date`.
  * Used to normalise progress note weekOf values.
  */

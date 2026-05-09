@@ -14,27 +14,24 @@ interface Bucket {
 }
 
 const WINDOW_MS = 60 * 60 * 1000 // 1 hour
-const MAX_HITS   = 5
 
-const buckets = new Map<string, Bucket>()
-
-/**
- * Returns true if the request should be blocked (limit exceeded).
- */
-export function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const bucket = buckets.get(ip)
-
-  if (!bucket || now > bucket.resetAt) {
-    // New window
-    buckets.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+function createRateLimiter(maxHits: number) {
+  const buckets = new Map<string, Bucket>()
+  return function isLimited(ip: string): boolean {
+    const now = Date.now()
+    const bucket = buckets.get(ip)
+    if (!bucket || now > bucket.resetAt) {
+      buckets.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+      return false
+    }
+    if (bucket.count >= maxHits) return true
+    bucket.count++
     return false
   }
-
-  if (bucket.count >= MAX_HITS) {
-    return true
-  }
-
-  bucket.count++
-  return false
 }
+
+/** 5 req/hr — public application submissions (POST /api/applications) */
+export const isRateLimited = createRateLimiter(5)
+
+/** 10 req/hr — application status lookups (GET /api/application-status) */
+export const isStatusLookupLimited = createRateLimiter(10)

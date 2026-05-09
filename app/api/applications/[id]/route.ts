@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole, apiError, NotFoundError } from "@/lib/permissions";
 import {
   sendMeetGreetEmail,
+  sendMeetGreetAdopterEmail,
   sendRecommendationEmail,
   sendAdoptionDecisionEmail,
 } from "@/lib/mailer";
@@ -132,21 +133,36 @@ export async function PATCH(
         },
       });
 
-      // Email Foster Parent — isolated: failure must never break the 200 response
-      try {
-        const fp = updated.animal.fosterParent;
-        if (fp?.email) {
-          await sendMeetGreetEmail({
-            animalName: updated.animal.name,
+      // Emails — both fire-and-forget; failure must never break the 200 response
+      void (async () => {
+        try {
+          // Story 27 — notify adopter
+          await sendMeetGreetAdopterEmail({
+            to:            current.applicantEmail,
             applicantName: current.applicantName,
-            meetGreetAt: date,
-            scheduledBy: session.user.name ?? "Staff",
-            to: fp.email,
+            animalName:    updated.animal.name,
+            meetGreetAt:   date,
           });
+        } catch (err) {
+          console.error("[mailer] Failed to send Meet & Greet email to adopter:", err);
         }
-      } catch (notifyErr) {
-        console.error("[mailer] Failed to send Meet & Greet email:", notifyErr);
-      }
+
+        try {
+          // Existing — notify foster parent
+          const fp = updated.animal.fosterParent;
+          if (fp?.email) {
+            await sendMeetGreetEmail({
+              animalName:    updated.animal.name,
+              applicantName: current.applicantName,
+              meetGreetAt:   date,
+              scheduledBy:   session.user.name ?? "Staff",
+              to:            fp.email,
+            });
+          }
+        } catch (err) {
+          console.error("[mailer] Failed to send Meet & Greet email to foster parent:", err);
+        }
+      })();
 
       return NextResponse.json(updated);
     }

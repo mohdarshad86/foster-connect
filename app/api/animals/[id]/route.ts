@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { requireRole, apiError, NotFoundError } from "@/lib/permissions"
 import { assertValidTransition } from "@/lib/statusMachine"
+import { sendFosterAssignmentEmail } from "@/lib/mailer"
 import type { AnimalStatus } from "@prisma/client"
 
 const ANIMAL_STATUSES: AnimalStatus[] = [
@@ -155,6 +156,31 @@ export async function PATCH(
               changedAt: new Date(),
             },
           }
+        }
+
+        // Story 28 — notify the foster parent only when the assignment changes
+        if (body.fosterParentId !== animal.fosterParentId) {
+          void (async () => {
+            try {
+              const foster = await prisma.user.findUnique({
+                where:  { id: body.fosterParentId as string },
+                select: { email: true, name: true },
+              })
+              if (foster?.email) {
+                await sendFosterAssignmentEmail({
+                  to:         foster.email,
+                  fosterName: foster.name,
+                  animalName: animal.name,
+                  animalId:   animal.id,
+                  species:    animal.species,
+                  breed:      animal.breed,
+                  ageYears:   animal.ageYears,
+                })
+              }
+            } catch (err) {
+              console.error("[mailer] Failed to send foster assignment email:", err)
+            }
+          })()
         }
       }
     }
