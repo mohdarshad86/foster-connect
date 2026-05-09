@@ -21,9 +21,10 @@ const ROLE_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/vet-partners",     roles: ["RESCUE_LEAD"] },
   { prefix: "/applications",     roles: ["ADOPTION_COUNSELOR", "RESCUE_LEAD"] },
   // API mirrors
-  { prefix: "/api/users",        roles: ["RESCUE_LEAD"] },
-  { prefix: "/api/vet-partners", roles: ["RESCUE_LEAD"] },
-  { prefix: "/api/applications", roles: ["ADOPTION_COUNSELOR", "RESCUE_LEAD"] },
+  { prefix: "/api/users",            roles: ["RESCUE_LEAD"] },
+  { prefix: "/api/vet-partners",     roles: ["RESCUE_LEAD"] },
+  { prefix: "/api/applications",     roles: ["ADOPTION_COUNSELOR", "RESCUE_LEAD"] },
+  { prefix: "/success-stories",      roles: ["RESCUE_LEAD"] },
 ]
 
 // Routes that bypass authentication entirely
@@ -32,6 +33,8 @@ function isPublicRoute(pathname: string, method: string): boolean {
   if (pathname.startsWith("/login"))                         return true
   if (pathname.startsWith("/apply"))                         return true
   if (pathname.startsWith("/application-status"))            return true
+  if (pathname.startsWith("/faq"))                           return true
+  if (pathname === "/api/success-stories" && method === "GET") return true
   if (pathname.startsWith("/api/auth"))                      return true
   if (pathname.startsWith("/api/uploads"))                   return true
   if (pathname.startsWith("/api/application-status"))        return true

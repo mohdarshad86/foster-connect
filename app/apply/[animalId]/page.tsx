@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ApplicationForm } from "@/components/apply/ApplicationForm";
 import { CopyLinkButton } from "@/components/apply/CopyLinkButton";
-import { PawPrint } from "lucide-react";
+import { formatDuration } from "@/lib/utils";
+import { PawPrint, Clock } from "lucide-react";
 
 const objectIdPattern = /^[a-f0-9]{24}$/i;
 
@@ -23,12 +24,13 @@ export default async function ApplyPage({ params }: Props) {
     animal = await prisma.animal.findUnique({
       where: { id: animalId },
       select: {
-        id: true,
-        name: true,
-        species: true,
-        breed: true,
-        status: true,
+        id:           true,
+        name:         true,
+        species:      true,
+        breed:        true,
+        status:       true,
         primaryPhoto: true,
+        intakeDate:   true,
       },
     });
   } catch (error) {
@@ -42,6 +44,7 @@ export default async function ApplyPage({ params }: Props) {
   if (!animal) notFound();
 
   const isAvailable = animal.status === "ADOPTION_READY";
+  const timeInCare  = formatDuration(animal.intakeDate);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
@@ -77,6 +80,13 @@ export default async function ApplyPage({ params }: Props) {
                   {animal.species}
                   {animal.breed ? ` · ${animal.breed}` : ""}
                 </p>
+                {/* Story 33 — time in foster care */}
+                {timeInCare && (
+                  <p className="flex items-center gap-1 text-xs text-slate-400 mt-1.5">
+                    <Clock className="w-3.5 h-3.5" />
+                    In care for {timeInCare}
+                  </p>
+                )}
               </div>
               {/* Story 23 — share link button */}
               <CopyLinkButton />

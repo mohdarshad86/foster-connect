@@ -92,6 +92,7 @@ model User {
   applications       AdopterApplication[] @relation("CounselorApplications")
   finalizedApps      AdopterApplication[] @relation("LeadDecisions")
   vetPartnersAdded   VetPartner[]
+  successStories     SuccessStory[]
 }
 
 // ---------------------------------------------------------------------------
@@ -298,6 +299,25 @@ model VetPartner {
 
   addedById String @db.ObjectId
   addedBy   User   @relation(fields: [addedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// SuccessStory — Story 35
+// ---------------------------------------------------------------------------
+
+model SuccessStory {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  animalName    String
+  photoUrl      String?
+  blurb         String
+  adoptionMonth String
+  isPublished   Boolean @default(false)
+
+  createdById String @db.ObjectId
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

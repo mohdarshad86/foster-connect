@@ -11,6 +11,7 @@ import {
   Users,
   Stethoscope,
   FileText,
+  Heart,
 } from "lucide-react";
 import { LogoutButton } from "@/components/ui/LogoutButton";
 import { cn } from "@/lib/utils";
@@ -88,6 +89,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/applications",
     icon: <ClipboardList className="w-4 h-4" />,
     roles: ["RESCUE_LEAD", "ADOPTION_COUNSELOR"],
+  },
+  {
+    label: "Success Stories",
+    href: "/success-stories",
+    icon: <Heart className="w-4 h-4" />,
+    roles: ["RESCUE_LEAD"],
   },
   {
     label: "Vet Partners",

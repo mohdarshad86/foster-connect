@@ -3,8 +3,33 @@ import { prisma } from "@/lib/prisma"
 import { PawPrint } from "lucide-react"
 import { HomepageGrid } from "@/components/animals/HomepageGrid"
 
+// Story 32 — How Adoption Works steps (hardcoded, no CMS required)
+const HOW_IT_WORKS_STEPS = [
+  {
+    title:       "Apply",
+    description: "Fill out a short application for the animal you'd like to adopt.",
+  },
+  {
+    title:       "Application Review",
+    description: "Our adoption counselors review your application and household details.",
+  },
+  {
+    title:       "Meet & Greet",
+    description: "We arrange an in-person meeting between you and the animal.",
+  },
+  {
+    title:       "Decision",
+    description: "Our Rescue Lead reviews the counselor's recommendation and makes a final decision.",
+  },
+  {
+    title:       "Welcome Home",
+    description: "Once approved, we arrange the handover and your new companion comes home.",
+  },
+]
+
 export default async function PublicHomePage() {
-  const animals = await prisma.animal.findMany({
+  const [animals, successStories] = await Promise.all([
+  prisma.animal.findMany({
     where:   { status: "ADOPTION_READY" },
     orderBy: { intakeDate: "desc" },
     select: {
@@ -22,7 +47,22 @@ export default async function PublicHomePage() {
         select: { traits: true },
       },
     },
-  })
+  }),
+
+  // Story 35 — published success stories for homepage
+  prisma.successStory.findMany({
+    where:   { isPublished: true },
+    orderBy: { createdAt: "desc" },
+    take:    6,
+    select: {
+      id:            true,
+      animalName:    true,
+      photoUrl:      true,
+      blurb:         true,
+      adoptionMonth: true,
+    },
+  }),
+  ])
 
   // Serialize Dates → strings for client component
   const serialized = animals.map((a) => ({
@@ -56,6 +96,12 @@ export default async function PublicHomePage() {
               Check application status
             </Link>
             <Link
+              href="/faq"
+              className="text-sm text-slate-600 hover:text-blue-600 transition-colors"
+            >
+              FAQ
+            </Link>
+            <Link
               href="/login"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
             >
@@ -79,6 +125,69 @@ export default async function PublicHomePage() {
       {/* Animal grid with filters, count, and trait pills */}
       <section className="max-w-6xl mx-auto px-6 pb-20">
         <HomepageGrid animals={serialized} lastUpdated={lastUpdated} />
+      </section>
+
+      {/* Success Stories — Story 35 */}
+      {successStories.length > 0 && (
+        <section className="bg-slate-50 border-t border-slate-200">
+          <div className="max-w-6xl mx-auto px-6 py-16">
+            <h2 className="text-2xl font-bold text-slate-900 text-center mb-10">
+              Happy Endings
+            </h2>
+            <div className="grid grid-cols-3 gap-6">
+              {successStories.map((story) => (
+                <div key={story.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  {story.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/uploads/${story.photoUrl}`}
+                      alt={story.animalName}
+                      className="w-full h-44 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-44 bg-blue-50 flex items-center justify-center">
+                      <PawPrint className="w-12 h-12 text-blue-200" />
+                    </div>
+                  )}
+                  <div className="p-5 space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-base font-semibold text-slate-900">{story.animalName}</p>
+                      <span className="text-xs text-slate-400 shrink-0">{story.adoptionMonth}</span>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+                      {story.blurb}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* How Adoption Works — Story 32 */}
+      <section className="bg-white border-t border-slate-200">
+        <div className="max-w-6xl mx-auto px-6 py-16">
+          <h2 className="text-2xl font-bold text-slate-900 text-center mb-10">
+            How Adoption Works
+          </h2>
+          <ol className="grid grid-cols-5 gap-6">
+            {HOW_IT_WORKS_STEPS.map((step, i) => (
+              <li key={i} className="flex flex-col items-center text-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                  {i + 1}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{step.title}</p>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{step.description}</p>
+                </div>
+                {i < HOW_IT_WORKS_STEPS.length - 1 && (
+                  <div className="hidden absolute" aria-hidden />
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
       {/* Footer */}

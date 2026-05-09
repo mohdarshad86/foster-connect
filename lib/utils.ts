@@ -69,6 +69,43 @@ export function formatRelativeTime(date: Date | string): string {
 }
 
 /**
+ * Format a human-readable duration between two dates.
+ * e.g. "3 weeks", "2 months", "1 year 3 months"
+ * Returns null if either date is invalid.
+ */
+export function formatDuration(from: Date | string, to: Date | string = new Date()): string | null {
+  const start = new Date(from)
+  const end   = new Date(to)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return null
+
+  const diffMs = end.getTime() - start.getTime()
+  if (diffMs < 0) return null
+
+  // Total months (approximate, ignoring day-of-month edge cases for simplicity)
+  const totalMonths =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth()) -
+    (end.getDate() < start.getDate() ? 1 : 0)
+
+  if (totalMonths < 1) {
+    const weeks = Math.max(1, Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)))
+    return `${weeks} week${weeks === 1 ? "" : "s"}`
+  }
+
+  if (totalMonths < 12) {
+    return `${totalMonths} month${totalMonths === 1 ? "" : "s"}`
+  }
+
+  const years          = Math.floor(totalMonths / 12)
+  const remainingMonths = totalMonths % 12
+
+  if (remainingMonths === 0) {
+    return `${years} year${years === 1 ? "" : "s"}`
+  }
+  return `${years} year${years === 1 ? "" : "s"} ${remainingMonths} month${remainingMonths === 1 ? "" : "s"}`
+}
+
+/**
  * Return the ISO date of the Monday of the week containing `date`.
  * Used to normalise progress note weekOf values.
  */
