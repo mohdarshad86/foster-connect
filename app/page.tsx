@@ -1,44 +1,63 @@
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
-import { PawPrint } from "lucide-react"
+import { PawPrint, CheckCircle2 } from "lucide-react"
 import { HomepageGrid } from "@/components/animals/HomepageGrid"
+import { AdoptedAnimalCard, type AdoptedAnimal } from "@/components/animals/AdoptedAnimalCard"
 import { HOW_IT_WORKS_STEPS } from "@/lib/constants"
 
 export default async function PublicHomePage() {
-  const [animals, successStories] = await Promise.all([
-  prisma.animal.findMany({
-    where:   { status: "ADOPTION_READY" },
-    orderBy: { intakeDate: "desc" },
-    select: {
-      id:           true,
-      name:         true,
-      species:      true,
-      breed:        true,
-      ageYears:     true,
-      sex:          true,
-      status:       true,
-      intakeDate:   true,
-      primaryPhoto: true,
-      updatedAt:    true,                          // Story 21 — last-updated timestamp
-      personalityProfile: {                        // Story 22 — trait pills
-        select: { traits: true },
+  const [animals, adoptedAnimalsRaw, successStories] = await Promise.all([
+    // Section 1 — animals ready for adoption
+    prisma.animal.findMany({
+      where:   { status: "ADOPTION_READY" },
+      orderBy: { intakeDate: "desc" },
+      select: {
+        id:           true,
+        name:         true,
+        species:      true,
+        breed:        true,
+        ageYears:     true,
+        sex:          true,
+        status:       true,
+        intakeDate:   true,
+        primaryPhoto: true,
+        updatedAt:    true,                          // Story 21 — last-updated timestamp
+        personalityProfile: {                        // Story 22 — trait pills
+          select: { traits: true },
+        },
       },
-    },
-  }),
+    }),
 
-  // Story 35 — published success stories for homepage
-  prisma.successStory.findMany({
-    where:   { isPublished: true },
-    orderBy: { createdAt: "desc" },
-    take:    6,
-    select: {
-      id:            true,
-      animalName:    true,
-      photoUrl:      true,
-      blurb:         true,
-      adoptionMonth: true,
-    },
-  }),
+    // Section 2 — recently adopted animals (most recent 8)
+    prisma.animal.findMany({
+      where:   { status: "ADOPTED" },
+      orderBy: { updatedAt: "desc" },
+      take:    8,
+      select: {
+        id:            true,
+        name:          true,
+        species:       true,
+        breed:         true,
+        ageYears:      true,
+        sex:           true,
+        primaryPhoto:  true,
+        statusHistory: true,   // used to extract the adoption date
+      },
+    }),
+
+    // Story 35 — published success stories for homepage
+    prisma.successStory.findMany({
+      where:   { isPublished: true },
+      orderBy: { createdAt: "desc" },
+      take:    6,
+      select: {
+        id:            true,
+        animalName:    true,
+        photoUrl:      true,
+        blurb:         true,
+        adoptionMonth: true,
+      },
+    }),
   ])
 
   // Serialize Dates → strings for client component
@@ -55,6 +74,24 @@ export default async function PublicHomePage() {
           .reduce((latest, a) => (a.updatedAt > latest ? a.updatedAt : latest), animals[0].updatedAt)
           .toISOString()
       : null
+
+  // Extract the adoption date from statusHistory for each adopted animal
+  const adoptedAnimals: AdoptedAnimal[] = adoptedAnimalsRaw.map((a) => {
+    const adoptedEntry = a.statusHistory
+      .filter((h) => h.to === "ADOPTED")
+      .sort((x, y) => new Date(y.changedAt).getTime() - new Date(x.changedAt).getTime())[0]
+
+    return {
+      id:           a.id,
+      name:         a.name,
+      species:      a.species,
+      breed:        a.breed,
+      ageYears:     a.ageYears,
+      sex:          a.sex,
+      primaryPhoto: a.primaryPhoto,
+      adoptedAt:    adoptedEntry ? new Date(adoptedEntry.changedAt).toISOString() : null,
+    }
+  })
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -110,6 +147,35 @@ export default async function PublicHomePage() {
       <section id="animals" className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
         <HomepageGrid animals={serialized} lastUpdated={lastUpdated} />
       </section>
+
+      {/* Recently Adopted — Section 2 */}
+      {adoptedAnimals.length > 0 && (
+        <section className="bg-emerald-50 border-t border-emerald-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+            {/* Section header */}
+            <div className="text-center mb-10">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold mb-4">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Forever homes found
+              </span>
+              <h2 className="text-2xl font-bold text-slate-900">
+                Recently Adopted
+              </h2>
+              <p className="text-slate-500 mt-2 max-w-md mx-auto text-sm">
+                These animals have already found their forever families — thanks to
+                people like you.
+              </p>
+            </div>
+
+            {/* Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {adoptedAnimals.map((animal) => (
+                <AdoptedAnimalCard key={animal.id} animal={animal} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Success Stories — Story 35 */}
       {successStories.length > 0 && (
