@@ -106,7 +106,7 @@ export async function RescueLeadDashboard() {
               <CardRow key={alert.id}>
                 <div className="min-w-0">
                   <Link
-                    href={`/animals/${alert.animal.id}`}
+                    href={`/dashboard/animals/${alert.animal.id}`}
                     className="text-sm font-medium text-slate-800 hover:text-blue-600 truncate block"
                   >
                     {alert.animal.name}

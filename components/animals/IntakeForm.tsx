@@ -51,7 +51,7 @@ export function IntakeForm() {
     }
 
     const animal = await res.json()
-    router.push(`/animals/${animal.id}`)
+    router.push(`/dashboard/animals/${animal.id}`)
   }
 
   async function onSubmit(data: AnimalCreateInput) {

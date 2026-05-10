@@ -137,7 +137,7 @@ export function ApplicationTable({
                   </td>
                   <td className="px-5 py-3">
                     <Link
-                      href={`/animals/${app.animal.id}`}
+                      href={`/dashboard/animals/${app.animal.id}`}
                       className="text-blue-600 hover:underline font-medium"
                       onClick={(e) => e.stopPropagation()}
                     >

@@ -85,7 +85,7 @@ export async function IntakeSpecialistDashboard() {
                 >
                   <td className="py-2.5 pr-4">
                     <Link
-                      href={`/animals/${animal.id}`}
+                      href={`/dashboard/animals/${animal.id}`}
                       className="font-medium text-slate-800 hover:text-blue-600"
                     >
                       {animal.name}

@@ -101,7 +101,7 @@ export async function FosterParentDashboard({ userId }: Props) {
                   />
                   <div className="min-w-0">
                     <Link
-                      href={`/animals/${animal.id}`}
+                      href={`/dashboard/animals/${animal.id}`}
                       className="text-sm font-medium text-slate-800 hover:text-blue-600"
                     >
                       {animal.name}
@@ -122,7 +122,7 @@ export async function FosterParentDashboard({ userId }: Props) {
                   <AnimalStatusBadge status={animal.status} />
                   {isOverdue && (
                     <Link
-                      href={`/animals/${animal.id}`}
+                      href={`/dashboard/animals/${animal.id}`}
                       className="text-xs font-medium text-yellow-700 bg-yellow-100 px-2.5 py-1 rounded-lg hover:bg-yellow-200 transition-colors"
                     >
                       Add note

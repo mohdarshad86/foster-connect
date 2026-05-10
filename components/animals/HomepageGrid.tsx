@@ -178,7 +178,7 @@ export function HomepageGrid({ animals, lastUpdated }: Props) {
 
       {/* ── Count + last updated ── */}
       <div className="flex items-center justify-between text-sm text-slate-500">
-        <span>{countLabel}</span>
+        <span className="font-medium text-slate-700">{countLabel}</span>
         {lastUpdated && (
           <span className="text-xs text-slate-400">
             Last updated {formatRelativeTime(lastUpdated)}
@@ -215,12 +215,12 @@ export function HomepageGrid({ animals, lastUpdated }: Props) {
           </div>
         )
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((animal) => (
             <AnimalCard
               key={animal.id}
               animal={animal}
-              href={`/public-animals/${animal.id}`}
+              href={`/animals/${animal.id}`}
               traits={animal.personalityProfile?.traits ?? null}
             />
           ))}

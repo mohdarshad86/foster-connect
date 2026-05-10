@@ -146,7 +146,7 @@ export function AnimalDirectoryClient({ initialAnimals, initialNextCursor }: Pro
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {animals.map((a) => (
-            <AnimalCard key={a.id} animal={a} />
+            <AnimalCard key={a.id} animal={a} href={`/dashboard/animals/${a.id}`} />
           ))}
         </div>
       )}

@@ -60,7 +60,7 @@ export default async function PublicHomePage() {
     <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-blue-600 font-semibold">
             <PawPrint className="w-5 h-5" />
             <span className="text-slate-900">Foster Connect</span>
@@ -89,7 +89,7 @@ export default async function PublicHomePage() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 text-center">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14 text-center">
         <h1 className="text-4xl font-bold text-slate-900 mb-3">
           Find Your Perfect Companion
         </h1>
@@ -97,17 +97,24 @@ export default async function PublicHomePage() {
           Every animal below is ready to find a loving home. Browse the list and
           apply — we&apos;ll take it from there.
         </p>
+        <a
+          href="#animals"
+          className="inline-flex items-center gap-2 mt-6 px-6 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+        >
+          <PawPrint className="w-4 h-4" />
+          Browse Animals
+        </a>
       </section>
 
       {/* Animal grid with filters, count, and trait pills */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
+      <section id="animals" className="max-w-7xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
         <HomepageGrid animals={serialized} lastUpdated={lastUpdated} />
       </section>
 
       {/* Success Stories — Story 35 */}
       {successStories.length > 0 && (
         <section className="bg-slate-50 border-t border-slate-200">
-          <div className="max-w-6xl mx-auto px-6 py-16">
+          <div className="max-w-7xl mx-auto px-6 py-16">
             <h2 className="text-2xl font-bold text-slate-900 text-center mb-10">
               Happy Endings
             </h2>
@@ -144,23 +151,26 @@ export default async function PublicHomePage() {
 
       {/* How Adoption Works — Story 32 */}
       <section className="bg-white border-t border-slate-200">
-        <div className="max-w-6xl mx-auto px-6 py-16">
+        <div className="max-w-7xl mx-auto px-6 py-16">
           <h2 className="text-2xl font-bold text-slate-900 text-center mb-10">
             How Adoption Works
           </h2>
-          <ol className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+          <ol className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-0">
             {HOW_IT_WORKS_STEPS.map((step, i) => (
-              <li key={i} className="flex flex-col items-center text-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+              <li key={i} className="flex flex-col items-center text-center gap-3 px-4 relative">
+                {i < HOW_IT_WORKS_STEPS.length - 1 && (
+                  <span
+                    className="hidden lg:block absolute top-5 left-[calc(50%+20px)] right-[-calc(50%-20px)] h-px bg-blue-200 w-[calc(100%-40px)]"
+                    aria-hidden
+                  />
+                )}
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0 relative z-10">
                   {i + 1}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-800">{step.title}</p>
                   <p className="text-xs text-slate-500 mt-1 leading-relaxed">{step.description}</p>
                 </div>
-                {i < HOW_IT_WORKS_STEPS.length - 1 && (
-                  <div className="hidden absolute" aria-hidden />
-                )}
               </li>
             ))}
           </ol>

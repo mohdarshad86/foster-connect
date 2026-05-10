@@ -64,7 +64,7 @@ export default async function ApplicationDetailPage({ params }: Props) {
         <p className="text-sm text-slate-500 mt-0.5">
           Applied for{" "}
           <Link
-            href={`/animals/${animal.id}`}
+            href={`/dashboard/animals/${animal.id}`}
             className="text-blue-600 hover:underline font-medium"
           >
             {animal.name}

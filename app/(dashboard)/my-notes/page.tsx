@@ -117,7 +117,7 @@ export default async function MyNotesPage({ searchParams }: Props) {
           </p>
           {myAnimals.length > 0 && (
             <Link
-              href={`/animals/${myAnimals[0].id}`}
+              href={`/dashboard/animals/${myAnimals[0].id}`}
               className="mt-4 inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800"
             >
               <PawPrint className="w-4 h-4" />
@@ -132,7 +132,7 @@ export default async function MyNotesPage({ searchParams }: Props) {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <Link
-                    href={`/animals/${note.animal.id}`}
+                    href={`/dashboard/animals/${note.animal.id}`}
                     className="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1.5"
                   >
                     <PawPrint className="w-3.5 h-3.5" />

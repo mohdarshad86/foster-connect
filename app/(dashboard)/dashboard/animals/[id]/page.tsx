@@ -217,7 +217,7 @@ export default async function AnimalProfilePage({ params }: Props) {
         </Link>
         {(animal.status === "ADOPTION_READY" || animal.status === "PENDING_ADOPTION") && (
           <Link
-            href={`/public-animals/${id}`}
+            href={`/animals/${id}`}
             target="_blank"
             className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition-colors"
           >
@@ -576,4 +576,3 @@ function PersonalityTabContent({
     </div>
   );
 }
-

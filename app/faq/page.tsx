@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { PawPrint, ChevronRight } from "lucide-react"
+import Link from "next/link";
+import { PawPrint, ChevronRight } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // FAQ data — hardcoded, no database required (Story 34)
@@ -38,7 +38,7 @@ const FAQS = [
     q: "Are there adoption fees?",
     a: "Yes — adoption fees help cover the cost of veterinary care, food, and transport during an animal's time in foster care. Fees vary by species and medical history. The exact fee is confirmed during the application review stage before any commitment is required.",
   },
-]
+];
 
 // ---------------------------------------------------------------------------
 // Page
@@ -50,7 +50,10 @@ export default function FAQPage() {
       {/* Navigation */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 text-blue-600 font-semibold">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-blue-600 font-semibold"
+          >
             <PawPrint className="w-5 h-5" />
             <span className="text-slate-900">Foster Connect</span>
           </Link>
@@ -91,7 +94,10 @@ export default function FAQPage() {
       {/* FAQ list */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20 space-y-4">
         {FAQS.map((faq, i) => (
-          <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-5">
+          <div
+            key={i}
+            className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-5"
+          >
             <h2 className="text-base font-semibold text-slate-900 flex items-start gap-2">
               <ChevronRight className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
               {faq.q}
@@ -105,7 +111,8 @@ export default function FAQPage() {
         {/* CTA */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-6 py-6 text-center space-y-3">
           <p className="text-sm font-medium text-blue-900">
-            Still have questions? Browse our available animals and start the process.
+            Still have questions? Browse our available animals and start the
+            process.
           </p>
           <Link
             href="/"
@@ -121,5 +128,5 @@ export default function FAQPage() {
         Foster Connect · All rights reserved
       </footer>
     </div>
-  )
+  );
 }

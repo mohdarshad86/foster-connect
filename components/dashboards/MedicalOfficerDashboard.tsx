@@ -110,7 +110,7 @@ export async function MedicalOfficerDashboard() {
                 </Badge>
                 <div className="min-w-0">
                   <Link
-                    href={`/animals/${alert.animal.id}`}
+                    href={`/dashboard/animals/${alert.animal.id}`}
                     className="text-sm font-medium text-slate-800 hover:text-blue-600 block truncate"
                   >
                     {alert.animal.name}
@@ -137,7 +137,7 @@ export async function MedicalOfficerDashboard() {
               <CardRow key={record.id}>
                 <div className="min-w-0">
                   <Link
-                    href={`/animals/${record.animal.id}`}
+                    href={`/dashboard/animals/${record.animal.id}`}
                     className="text-sm font-medium text-slate-800 hover:text-blue-600 block truncate"
                   >
                     {record.animal.name}
@@ -163,7 +163,7 @@ export async function MedicalOfficerDashboard() {
               <CardRow key={record.id}>
                 <div className="min-w-0">
                   <Link
-                    href={`/animals/${record.animal.id}`}
+                    href={`/dashboard/animals/${record.animal.id}`}
                     className="text-sm font-medium text-slate-800 hover:text-blue-600 block truncate"
                   >
                     {record.animal.name}

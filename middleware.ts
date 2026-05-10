@@ -27,6 +27,9 @@ const ROLE_ROUTES: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/success-stories",      roles: ["RESCUE_LEAD"] },
 ]
 
+// ObjectId pattern — 24 hex chars (MongoDB)
+const OBJECT_ID_RE = /^[a-f0-9]{24}$/i
+
 // Routes that bypass authentication entirely
 function isPublicRoute(pathname: string, method: string): boolean {
   if (pathname === "/")                                      return true
@@ -34,8 +37,11 @@ function isPublicRoute(pathname: string, method: string): boolean {
   if (pathname.startsWith("/apply"))                         return true
   if (pathname.startsWith("/application-status"))            return true
   if (pathname.startsWith("/faq"))                           return true
-  // Public animal profile pages — served at /public-animals/[id] to avoid routing
-  // conflict with the authenticated dashboard route at /animals/[id]
+  // Public animal profile pages at /animals/[id] — allow only exact objectId segments
+  // so /animals and /animals/new remain auth-protected dashboard routes.
+  const animalSegment = pathname.match(/^\/animals\/([^/]+)$/)?.[1]
+  if (animalSegment && OBJECT_ID_RE.test(animalSegment))     return true
+  // Legacy /public-animals/[id] redirect shim — allow through so redirect fires
   if (pathname.startsWith("/public-animals/"))               return true
   if (pathname === "/api/success-stories" && method === "GET") return true
   if (pathname.startsWith("/api/auth"))                      return true

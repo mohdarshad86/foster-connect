@@ -26,7 +26,7 @@ interface Props {
 export function AnimalCard({ animal, href, traits }: Props) {
   return (
     <Link
-      href={href ?? `/public-animals/${animal.id}`}
+      href={href ?? `/animals/${animal.id}`}
       className="group block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md hover:border-blue-200 transition-all"
     >
       {/* Photo */}

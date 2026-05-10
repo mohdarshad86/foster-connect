@@ -45,6 +45,8 @@ export interface NavItem {
   href: string;
   icon: React.ReactNode;
   roles: Role[];
+  /** Additional path prefixes that should also activate this nav item */
+  alsoMatch?: string[];
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -71,6 +73,8 @@ export const NAV_ITEMS: NavItem[] = [
       "MEDICAL_OFFICER",
       "ADOPTION_COUNSELOR",
     ],
+    // Also highlight when viewing a private animal profile at /dashboard/animals/[id]
+    alsoMatch: ["/dashboard/animals/"],
   },
   {
     label: "New Intake",
@@ -122,7 +126,12 @@ export function getActiveHref(pathname: string, items: NavItem[]): string | null
   let activeHref: string | null = null;
 
   for (const item of items) {
-    if (!isMatchingRoute(pathname, item.href)) {
+    const matchesPrimary = isMatchingRoute(pathname, item.href);
+    const matchesAlso = item.alsoMatch?.some((prefix) =>
+      pathname.startsWith(prefix),
+    ) ?? false;
+
+    if (!matchesPrimary && !matchesAlso) {
       continue;
     }
 
