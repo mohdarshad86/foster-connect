@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { requireRole, apiError, NotFoundError } from "@/lib/permissions"
 import { assertValidTransition } from "@/lib/statusMachine"
 import { sendFosterAssignmentEmail } from "@/lib/mailer"
+import { AnimalPatchFieldsSchema, HealthSummaryPatchSchema } from "@/lib/validators/animal"
 import type { AnimalStatus } from "@prisma/client"
 
 const ANIMAL_STATUSES: AnimalStatus[] = [
@@ -85,7 +86,7 @@ export async function PATCH(
   try {
     const session = await auth()
     requireRole(session, [
-      "RESCUE_LEAD", "INTAKE_SPECIALIST", "FOSTER_PARENT",
+      "RESCUE_LEAD", "INTAKE_SPECIALIST", "FOSTER_PARENT", "MEDICAL_OFFICER",
     ])
 
     const { id } = await params
@@ -94,25 +95,74 @@ export async function PATCH(
     const animal = await prisma.animal.findUnique({ where: { id } })
     if (!animal) throw new NotFoundError("Animal")
 
-    // ── Non-Lead roles: primaryPhoto only ────────────────────────────────────
-    if (session.user.role !== "RESCUE_LEAD") {
-      // Foster Parents are restricted to their own animal
-      if (
-        session.user.role === "FOSTER_PARENT" &&
-        animal.fosterParentId !== session.user.id
-      ) {
+    // ── Non-Lead roles ────────────────────────────────────────────────────────
+    // Medical Officer — healthSummary only (Story 46)
+    if (session.user.role === "MEDICAL_OFFICER") {
+      if (!("healthSummary" in body)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }
-
-      if (typeof body.primaryPhoto !== "string") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      const parsed = HealthSummaryPatchSchema.safeParse(body)
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Validation failed", issues: parsed.error.flatten().fieldErrors },
+          { status: 400 },
+        )
       }
-
       const updated = await prisma.animal.update({
         where: { id },
-        data: { primaryPhoto: body.primaryPhoto },
+        data:  { healthSummary: parsed.data.healthSummary ?? null },
       })
       return NextResponse.json(updated)
+    }
+
+    if (session.user.role !== "RESCUE_LEAD") {
+      // Foster Parents are restricted to their own animal and primaryPhoto only
+      if (session.user.role === "FOSTER_PARENT") {
+        if (animal.fosterParentId !== session.user.id) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+        if (typeof body.primaryPhoto !== "string") {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+        const updated = await prisma.animal.update({
+          where: { id },
+          data: { primaryPhoto: body.primaryPhoto },
+        })
+        return NextResponse.json(updated)
+      }
+
+      // Intake Specialist: primaryPhoto OR profile field edits (Stories 42 + 45)
+      if (session.user.role === "INTAKE_SPECIALIST") {
+        // If the body contains profile fields, handle as a profile edit
+        const profileFields = ["name", "species", "breed", "ageYears", "sex", "colorMarkings", "publicBio"]
+        const hasProfileFields = profileFields.some((f) => f in body)
+
+        if (hasProfileFields) {
+          const parsed = AnimalPatchFieldsSchema.safeParse(body)
+          if (!parsed.success) {
+            return NextResponse.json(
+              { error: "Validation failed", issues: parsed.error.flatten().fieldErrors },
+              { status: 400 },
+            )
+          }
+          const updated = await prisma.animal.update({
+            where: { id },
+            data:  parsed.data,
+          })
+          return NextResponse.json(updated)
+        }
+
+        if (typeof body.primaryPhoto !== "string") {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+        const updated = await prisma.animal.update({
+          where: { id },
+          data: { primaryPhoto: body.primaryPhoto },
+        })
+        return NextResponse.json(updated)
+      }
+
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     // ── RESCUE_LEAD ──────────────────────────────────────────────────────────
@@ -120,9 +170,34 @@ export async function PATCH(
     type UpdateData = Parameters<typeof prisma.animal.update>[0]["data"]
     const data: UpdateData = {}
 
+    // ── Profile field edits (Stories 42 + 45)
+    const profileFields = ["name", "species", "breed", "ageYears", "sex", "colorMarkings", "publicBio"]
+    if (profileFields.some((f) => f in body)) {
+      const parsed = AnimalPatchFieldsSchema.safeParse(body)
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Validation failed", issues: parsed.error.flatten().fieldErrors },
+          { status: 400 },
+        )
+      }
+      Object.assign(data, parsed.data)
+    }
+
     // ── primaryPhoto
     if (typeof body.primaryPhoto === "string") {
       data.primaryPhoto = body.primaryPhoto
+    }
+
+    // ── healthSummary (Story 46 — Rescue Lead also allowed)
+    if ("healthSummary" in body) {
+      const parsed = HealthSummaryPatchSchema.safeParse(body)
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: "Validation failed", issues: parsed.error.flatten().fieldErrors },
+          { status: 400 },
+        )
+      }
+      data.healthSummary = parsed.data.healthSummary ?? null
     }
 
     // ── fosterParentId — assign / reassign a foster parent

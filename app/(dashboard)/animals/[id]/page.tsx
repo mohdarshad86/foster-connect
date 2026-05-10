@@ -10,6 +10,8 @@ import { StatusTransitionPanel } from "@/components/animals/StatusTransitionPane
 import { AlertBanner } from "@/components/animals/AlertBanner";
 import { PlaceAlertForm } from "@/components/animals/PlaceAlertForm";
 import { FlagConcernForm } from "@/components/animals/FlagConcernForm";
+import { EditAnimalForm } from "@/components/animals/EditAnimalForm";
+import { HealthSummaryEdit } from "@/components/animals/HealthSummaryEdit";
 import {
   AnimalProfileTabs,
   type TabConfig,
@@ -79,7 +81,9 @@ export default async function AnimalProfilePage({ params }: Props) {
   const isOwnerFoster =
     role === "FOSTER_PARENT" && animal.fosterParentId === session.user.id;
   const isNonOwnerFoster = role === "FOSTER_PARENT" && !isOwnerFoster;
-  const canPlaceAlert = role === "MEDICAL_OFFICER" || role === "RESCUE_LEAD";
+  const canPlaceAlert  = role === "MEDICAL_OFFICER" || role === "RESCUE_LEAD";
+  const canEditDetails = role === "INTAKE_SPECIALIST" || role === "RESCUE_LEAD";
+  const canEditHealth  = role === "MEDICAL_OFFICER"   || role === "RESCUE_LEAD";
 
   const showHistory = HISTORY_ROLES.includes(role);
   const showProgressNotes = isOwnerFoster || isStaff;
@@ -190,7 +194,11 @@ export default async function AnimalProfilePage({ params }: Props) {
       content: (
         <div className="space-y-6">
           <MedicalRecordForm animalId={id} />
-          <MedicalRecordTabs records={medicalRecords as RecordWithCreator[]} />
+          <MedicalRecordTabs
+            records={medicalRecords as RecordWithCreator[]}
+            animalId={id}
+            canVoid={canPlaceAlert}
+          />
         </div>
       ),
     });
@@ -198,14 +206,26 @@ export default async function AnimalProfilePage({ params }: Props) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* Back link */}
-      <Link
-        href="/animals"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        All animals
-      </Link>
+      {/* Back link + public profile shortcut */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/animals"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          All animals
+        </Link>
+        {(animal.status === "ADOPTION_READY" || animal.status === "PENDING_ADOPTION") && (
+          <Link
+            href={`/public-animals/${id}`}
+            target="_blank"
+            className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            View public profile
+          </Link>
+        )}
+      </div>
 
       {/* Header — visible to all roles */}
       <div className="flex items-start justify-between gap-4">
@@ -288,9 +308,23 @@ export default async function AnimalProfilePage({ params }: Props) {
 
           {/* Intake details */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-slate-700 mb-4">
-              Intake Details
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-slate-700">Intake Details</h2>
+              {canEditDetails && (
+                <EditAnimalForm
+                  animalId={id}
+                  current={{
+                    name:          animal.name,
+                    species:       animal.species,
+                    breed:         animal.breed,
+                    ageYears:      animal.ageYears,
+                    sex:           animal.sex,
+                    colorMarkings: animal.colorMarkings,
+                    publicBio:     animal.publicBio,
+                  }}
+                />
+              )}
+            </div>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <div>
                 <dt className="text-xs font-medium text-slate-400 uppercase tracking-wide">
@@ -343,6 +377,18 @@ export default async function AnimalProfilePage({ params }: Props) {
                 </dd>
               </div>
             </dl>
+
+            {/* Health Summary — Story 46 */}
+            {canEditHealth ? (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <HealthSummaryEdit animalId={id} healthSummary={animal.healthSummary} />
+              </div>
+            ) : animal.healthSummary ? (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1">Health Summary</p>
+                <p className="text-sm text-slate-700 italic">{animal.healthSummary}</p>
+              </div>
+            ) : null}
           </div>
 
           {/* Status history — Rescue Lead + Intake Specialist only */}
@@ -395,6 +441,7 @@ export default async function AnimalProfilePage({ params }: Props) {
               photos={animal.photos}
               primaryPhoto={animal.primaryPhoto}
               canUpload={canUpload}
+              canDelete={role === "INTAKE_SPECIALIST" || role === "RESCUE_LEAD"}
             />
           </div>
 

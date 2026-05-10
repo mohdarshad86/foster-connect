@@ -106,6 +106,37 @@ export function formatDuration(from: Date | string, to: Date | string = new Date
 }
 
 /**
+ * Story 47 — Deterministic emotional tagline for the public animal profile.
+ * Priority order: both booleans → kids only → dogs only → calm/low → playful/high → default
+ */
+interface ProfileForTagline {
+  goodWithKids: boolean | null
+  goodWithDogs: boolean | null
+  traits:       string[]
+  energyLevel:  string | null
+}
+
+export function getAnimalTagline(profile: ProfileForTagline | null): string {
+  if (!profile) return "Looking for a loving home"
+
+  const withKids = profile.goodWithKids === true
+  const withDogs = profile.goodWithDogs === true
+  const traits   = profile.traits.map((t) => t.toLowerCase())
+
+  const isCalm      = traits.includes("calm") || traits.includes("mellow") || traits.includes("gentle")
+  const isLowEnergy = profile.energyLevel === "Low"
+  const isPlayful   = traits.includes("playful") || traits.includes("energetic") || traits.includes("social")
+  const isHighEnergy = profile.energyLevel === "High"
+
+  if (withKids && withDogs) return "Ready to be everyone's best friend"
+  if (withKids)             return "Gentle, playful, and great with children"
+  if (withDogs)             return "A social butterfly who loves other dogs"
+  if (isCalm || isLowEnergy)    return "Your perfect couch companion"
+  if (isPlayful || isHighEnergy) return "Full of energy and ready to play"
+  return "Looking for a loving home"
+}
+
+/**
  * Return the ISO date of the Monday of the week containing `date`.
  * Used to normalise progress note weekOf values.
  */

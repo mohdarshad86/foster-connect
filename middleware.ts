@@ -34,6 +34,9 @@ function isPublicRoute(pathname: string, method: string): boolean {
   if (pathname.startsWith("/apply"))                         return true
   if (pathname.startsWith("/application-status"))            return true
   if (pathname.startsWith("/faq"))                           return true
+  // Public animal profile pages — served at /public-animals/[id] to avoid routing
+  // conflict with the authenticated dashboard route at /animals/[id]
+  if (pathname.startsWith("/public-animals/"))               return true
   if (pathname === "/api/success-stories" && method === "GET") return true
   if (pathname.startsWith("/api/auth"))                      return true
   if (pathname.startsWith("/api/uploads"))                   return true

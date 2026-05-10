@@ -47,7 +47,7 @@ export default async function ApplyPage({ params }: Props) {
   const timeInCare  = formatDuration(animal.intakeDate);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-12 px-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-8 sm:py-12 px-4">
       <div className="w-full max-w-lg space-y-8">
         {/* Brand mark */}
         <div className="text-center">

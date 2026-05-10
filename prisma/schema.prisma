@@ -112,6 +112,10 @@ model Animal {
   status        AnimalStatus         @default(INTAKE)
   primaryPhoto  String?
 
+  // Public-facing fields (Epic 15)
+  publicBio     String?   // max 600 chars, written by Intake Specialist or Rescue Lead
+  healthSummary String?   // max 200 chars, written by Medical Officer or Rescue Lead
+
   // Embedded status history (no separate collection needed)
   statusHistory StatusHistoryEntry[]
 
@@ -176,9 +180,11 @@ model MedicalRecord {
 
   notes String?
 
-  // Soft delete (Rescue Lead only)
-  isVoided   Boolean @default(false)
-  voidReason String?
+  // Soft-void (Medical Officer + Rescue Lead) — permanent, cannot be undone
+  isVoided    Boolean   @default(false)
+  voidReason  String?
+  voidedAt    DateTime?
+  voidedById  String?   @db.ObjectId
 
   createdById String @db.ObjectId
   createdBy   User   @relation(fields: [createdById], references: [id])

@@ -49,7 +49,7 @@ export default function FAQPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2 text-blue-600 font-semibold">
             <PawPrint className="w-5 h-5" />
             <span className="text-slate-900">Foster Connect</span>
@@ -79,7 +79,7 @@ export default function FAQPage() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-3xl mx-auto px-6 py-14 text-center">
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14 text-center">
         <h1 className="text-4xl font-bold text-slate-900 mb-3">
           Frequently Asked Questions
         </h1>
@@ -89,7 +89,7 @@ export default function FAQPage() {
       </section>
 
       {/* FAQ list */}
-      <section className="max-w-3xl mx-auto px-6 pb-20 space-y-4">
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20 space-y-4">
         {FAQS.map((faq, i) => (
           <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm px-6 py-5">
             <h2 className="text-base font-semibold text-slate-900 flex items-start gap-2">

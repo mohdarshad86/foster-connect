@@ -2,30 +2,7 @@ import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { PawPrint } from "lucide-react"
 import { HomepageGrid } from "@/components/animals/HomepageGrid"
-
-// Story 32 — How Adoption Works steps (hardcoded, no CMS required)
-const HOW_IT_WORKS_STEPS = [
-  {
-    title:       "Apply",
-    description: "Fill out a short application for the animal you'd like to adopt.",
-  },
-  {
-    title:       "Application Review",
-    description: "Our adoption counselors review your application and household details.",
-  },
-  {
-    title:       "Meet & Greet",
-    description: "We arrange an in-person meeting between you and the animal.",
-  },
-  {
-    title:       "Decision",
-    description: "Our Rescue Lead reviews the counselor's recommendation and makes a final decision.",
-  },
-  {
-    title:       "Welcome Home",
-    description: "Once approved, we arrange the handover and your new companion comes home.",
-  },
-]
+import { HOW_IT_WORKS_STEPS } from "@/lib/constants"
 
 export default async function PublicHomePage() {
   const [animals, successStories] = await Promise.all([
@@ -83,17 +60,17 @@ export default async function PublicHomePage() {
     <div className="min-h-screen bg-slate-50">
       {/* Navigation */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-blue-600 font-semibold">
             <PawPrint className="w-5 h-5" />
             <span className="text-slate-900">Foster Connect</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/application-status"
-              className="text-sm text-slate-600 hover:text-blue-600 transition-colors"
+              className="hidden sm:inline text-sm text-slate-600 hover:text-blue-600 transition-colors"
             >
-              Check application status
+              Check status
             </Link>
             <Link
               href="/faq"
@@ -103,7 +80,7 @@ export default async function PublicHomePage() {
             </Link>
             <Link
               href="/login"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-3 py-2 sm:px-4 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Staff Login
             </Link>
@@ -112,7 +89,7 @@ export default async function PublicHomePage() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 py-14 text-center">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 text-center">
         <h1 className="text-4xl font-bold text-slate-900 mb-3">
           Find Your Perfect Companion
         </h1>
@@ -123,7 +100,7 @@ export default async function PublicHomePage() {
       </section>
 
       {/* Animal grid with filters, count, and trait pills */}
-      <section className="max-w-6xl mx-auto px-6 pb-20">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20">
         <HomepageGrid animals={serialized} lastUpdated={lastUpdated} />
       </section>
 
@@ -134,7 +111,7 @@ export default async function PublicHomePage() {
             <h2 className="text-2xl font-bold text-slate-900 text-center mb-10">
               Happy Endings
             </h2>
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {successStories.map((story) => (
                 <div key={story.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                   {story.photoUrl ? (
@@ -171,7 +148,7 @@ export default async function PublicHomePage() {
           <h2 className="text-2xl font-bold text-slate-900 text-center mb-10">
             How Adoption Works
           </h2>
-          <ol className="grid grid-cols-5 gap-6">
+          <ol className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {HOW_IT_WORKS_STEPS.map((step, i) => (
               <li key={i} className="flex flex-col items-center text-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">

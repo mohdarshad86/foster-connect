@@ -17,6 +17,28 @@ export const AnimalCreateSchema = z.object({
 export type AnimalCreateInput = z.infer<typeof AnimalCreateSchema>
 
 // ---------------------------------------------------------------------------
+// Animal profile field edits (Intake Specialist + Rescue Lead — Story 42)
+// All fields are optional so callers only send what changed.
+// ---------------------------------------------------------------------------
+export const AnimalPatchFieldsSchema = z.object({
+  name:          z.string().min(1, "Name is required").optional(),
+  species:       z.enum(["Dog", "Cat", "Other"] as const).optional(),
+  breed:         z.string().optional(),
+  ageYears:      z.coerce.number().min(0).max(30).nullable().optional(),
+  sex:           z.enum(["Male", "Female", "Unknown"] as const).optional(),
+  colorMarkings: z.string().optional(),
+  // Story 45 — public bio (Intake Specialist + Rescue Lead)
+  publicBio:     z.string().max(600, "Bio cannot exceed 600 characters").nullable().optional(),
+})
+
+// Story 46 — health summary (Medical Officer + Rescue Lead only)
+export const HealthSummaryPatchSchema = z.object({
+  healthSummary: z.string().max(200, "Health summary cannot exceed 200 characters").nullable().optional(),
+})
+
+export type AnimalPatchFieldsInput = z.infer<typeof AnimalPatchFieldsSchema>
+
+// ---------------------------------------------------------------------------
 // Medical records — discriminated union by type
 // ---------------------------------------------------------------------------
 

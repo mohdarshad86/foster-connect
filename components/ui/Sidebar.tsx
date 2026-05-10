@@ -40,14 +40,14 @@ const ROLE_BADGE_COLOURS: Record<Role, string> = {
 // Nav items per role
 // ---------------------------------------------------------------------------
 
-interface NavItem {
+export interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
   roles: Role[];
 }
 
-const NAV_ITEMS: NavItem[] = [
+export const NAV_ITEMS: NavItem[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -114,11 +114,11 @@ const NAV_ITEMS: NavItem[] = [
 // NavLink — active state is handled client-side; server renders base styles
 // ---------------------------------------------------------------------------
 
-function isMatchingRoute(pathname: string, href: string): boolean {
+export function isMatchingRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function getActiveHref(pathname: string, items: NavItem[]): string | null {
+export function getActiveHref(pathname: string, items: NavItem[]): string | null {
   let activeHref: string | null = null;
 
   for (const item of items) {
@@ -166,7 +166,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
   const activeHref = getActiveHref(pathname, visibleItems);
 
   return (
-    <aside className="w-60 shrink-0 flex flex-col h-screen bg-white border-r border-slate-200 sticky top-0">
+    <aside className="w-60 shrink-0 hidden md:flex flex-col h-screen bg-white border-r border-slate-200 sticky top-0">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-100">
         <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">

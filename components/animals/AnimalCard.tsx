@@ -1,32 +1,32 @@
-import Link from "next/link"
-import { PawPrint } from "lucide-react"
-import { AnimalStatusBadge } from "@/components/animals/AnimalStatusBadge"
-import type { AnimalStatus } from "@prisma/client"
+import Link from "next/link";
+import { PawPrint } from "lucide-react";
+import { AnimalStatusBadge } from "@/components/animals/AnimalStatusBadge";
+import type { AnimalStatus } from "@prisma/client";
 
 /** Public-only shape — no private fields exposed */
 export interface PublicAnimal {
-  id:           string
-  name:         string
-  species:      string
-  breed:        string | null
-  ageYears:     number | null
-  sex:          string
-  status:       AnimalStatus
-  intakeDate:   string | Date
-  primaryPhoto: string | null
+  id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  ageYears: number | null;
+  sex: string;
+  status: AnimalStatus;
+  intakeDate: string | Date;
+  primaryPhoto: string | null;
 }
 
 interface Props {
-  animal:  PublicAnimal
-  href?:   string
+  animal: PublicAnimal;
+  href?: string;
   /** Up to 3 personality trait labels from the animal's PersonalityProfile */
-  traits?: string[] | null
+  traits?: string[] | null;
 }
 
 export function AnimalCard({ animal, href, traits }: Props) {
   return (
     <Link
-      href={href ?? `/animals/${animal.id}`}
+      href={href ?? `/public-animals/${animal.id}`}
       className="group block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md hover:border-blue-200 transition-all"
     >
       {/* Photo */}
@@ -53,7 +53,8 @@ export function AnimalCard({ animal, href, traits }: Props) {
         </div>
 
         <p className="text-sm text-slate-500 truncate">
-          {animal.species}{animal.breed ? ` · ${animal.breed}` : ""}
+          {animal.species}
+          {animal.breed ? ` · ${animal.breed}` : ""}
         </p>
 
         <div className="flex items-center gap-3 text-xs text-slate-400">
@@ -83,5 +84,5 @@ export function AnimalCard({ animal, href, traits }: Props) {
         )}
       </div>
     </Link>
-  )
+  );
 }

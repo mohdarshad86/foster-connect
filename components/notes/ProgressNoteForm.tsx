@@ -70,7 +70,7 @@ export function ProgressNoteForm({ animalId }: { animalId: string }) {
     >
       <h3 className="text-sm font-semibold text-slate-700">Add Progress Note</h3>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">
             Week of
@@ -78,7 +78,7 @@ export function ProgressNoteForm({ animalId }: { animalId: string }) {
           <input
             type="date"
             {...register("weekOf")}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
           />
           {errors.weekOf && (
             <p className="text-xs text-red-500">{errors.weekOf.message}</p>
@@ -93,9 +93,10 @@ export function ProgressNoteForm({ animalId }: { animalId: string }) {
             type="number"
             step="0.1"
             min="0"
+            inputMode="decimal"
             placeholder="Optional"
             {...register("weightKg")}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
           />
         </div>
       </div>
@@ -128,14 +129,14 @@ export function ProgressNoteForm({ animalId }: { animalId: string }) {
             <button
               type="button"
               onClick={() => submit(pendingData, true)}
-              className="px-3 py-1.5 bg-yellow-600 text-white rounded-lg text-sm font-medium hover:bg-yellow-700"
+              className="px-4 py-2.5 min-h-[44px] bg-yellow-600 text-white rounded-lg text-sm font-medium hover:bg-yellow-700 touch-manipulation"
             >
               Yes, replace
             </button>
             <button
               type="button"
               onClick={() => { setDuplicateWarning(false); setPendingData(null) }}
-              className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50"
+              className="px-4 py-2.5 min-h-[44px] bg-white border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 touch-manipulation"
             >
               Cancel
             </button>
@@ -147,7 +148,7 @@ export function ProgressNoteForm({ animalId }: { animalId: string }) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 touch-manipulation"
         >
           {isSubmitting ? "Saving…" : "Save note"}
         </button>

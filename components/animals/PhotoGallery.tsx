@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, Star, ImageOff, X } from "lucide-react"
+import { Upload, Star, ImageOff, X, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
@@ -16,22 +16,25 @@ interface Photo {
 }
 
 interface Props {
-  animalId: string
-  photos: Photo[]
+  animalId:     string
+  photos:       Photo[]
   primaryPhoto: string | null
-  canUpload: boolean
+  canUpload:    boolean
+  canDelete:    boolean   // Story 43 — Intake Specialist + Rescue Lead
 }
 
-export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Props) {
+export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload, canDelete }: Props) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [setPrimary, setSetPrimary] = useState(false)
-  const [clientError, setClientError] = useState<string | null>(null)
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
+  const [selectedFile,   setSelectedFile]   = useState<File | null>(null)
+  const [setPrimary,     setSetPrimary]     = useState(false)
+  const [clientError,    setClientError]    = useState<string | null>(null)
+  const [serverError,    setServerError]    = useState<string | null>(null)
+  const [uploading,      setUploading]      = useState(false)
   const [settingPrimary, setSettingPrimary] = useState<string | null>(null)
+  const [confirmDelete,  setConfirmDelete]  = useState<string | null>(null)  // photoId
+  const [deleting,       setDeleting]       = useState<string | null>(null)
 
   // ── File selection ─────────────────────────────────────────────────────────
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -52,7 +55,7 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
     }
 
     setSelectedFile(file)
-    setSetPrimary(photos.length === 0) // auto-check for first photo
+    setSetPrimary(photos.length === 0)
   }
 
   function clearSelection() {
@@ -101,10 +104,25 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ primaryPhoto: filePath }),
       })
-
       if (res.ok) router.refresh()
     } finally {
       setSettingPrimary(null)
+    }
+  }
+
+  // ── Delete photo (Story 43) ────────────────────────────────────────────────
+  async function handleDelete(photoId: string) {
+    setDeleting(photoId)
+    try {
+      const res = await fetch(`/api/animals/${animalId}/photos/${photoId}`, {
+        method: "DELETE",
+      })
+      if (res.ok) {
+        setConfirmDelete(null)
+        router.refresh()
+      }
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -124,6 +142,7 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
         <div className="grid grid-cols-3 gap-3">
           {photos.map((photo) => {
             const isPrimary = photo.filePath === primaryPhoto
+            const isConfirming = confirmDelete === photo.id
             return (
               <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -141,17 +160,51 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
                   </span>
                 )}
 
-                {/* Set as primary overlay (canUpload users only) */}
-                {canUpload && !isPrimary && (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
-                    <button
-                      onClick={() => handleSetPrimary(photo.id, photo.filePath)}
-                      disabled={settingPrimary === photo.id}
-                      className="flex items-center gap-1.5 text-xs font-medium bg-white text-slate-800 px-3 py-1.5 rounded-lg shadow hover:bg-yellow-50 transition-colors disabled:opacity-60"
-                    >
-                      <Star className="w-3 h-3" />
-                      {settingPrimary === photo.id ? "Updating…" : "Set as primary"}
-                    </button>
+                {/* Delete confirmation overlay */}
+                {isConfirming && (
+                  <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2 p-2 text-center">
+                    <p className="text-white text-xs font-medium">Delete this photo?</p>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => handleDelete(photo.id)}
+                        disabled={deleting === photo.id}
+                        className="px-2.5 py-1 bg-red-500 text-white rounded text-xs font-medium hover:bg-red-600 disabled:opacity-50"
+                      >
+                        {deleting === photo.id ? "…" : "Delete"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="px-2.5 py-1 bg-white/20 text-white rounded text-xs hover:bg-white/30"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hover actions */}
+                {!isConfirming && (
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between px-2 pb-2 gap-1">
+                    {canUpload && !isPrimary ? (
+                      <button
+                        onClick={() => handleSetPrimary(photo.id, photo.filePath)}
+                        disabled={settingPrimary === photo.id}
+                        className="flex items-center gap-1 text-xs font-medium bg-white text-slate-800 px-2 py-1 rounded shadow hover:bg-yellow-50 transition-colors disabled:opacity-60"
+                      >
+                        <Star className="w-3 h-3" />
+                        {settingPrimary === photo.id ? "…" : "Primary"}
+                      </button>
+                    ) : <span />}
+
+                    {canDelete && (
+                      <button
+                        onClick={() => setConfirmDelete(photo.id)}
+                        className="p-1.5 bg-red-500 text-white rounded shadow hover:bg-red-600 transition-colors"
+                        title="Delete photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -165,7 +218,6 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
         <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Upload a photo</p>
 
-          {/* Error messages */}
           {(clientError || serverError) && (
             <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {clientError ?? serverError}
@@ -173,7 +225,6 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
           )}
 
           {selectedFile ? (
-            /* Selected file preview row */
             <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-lg px-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-800 truncate">{selectedFile.name}</p>
@@ -184,7 +235,6 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
               </button>
             </div>
           ) : (
-            /* File picker trigger */
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -203,7 +253,6 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
             onChange={handleFileChange}
           />
 
-          {/* "Set as primary" checkbox — only shown when there are existing photos */}
           {selectedFile && photos.length > 0 && (
             <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
               <input
@@ -217,12 +266,7 @@ export function PhotoGallery({ animalId, photos, primaryPhoto, canUpload }: Prop
           )}
 
           {selectedFile && (
-            <Button
-              size="sm"
-              loading={uploading}
-              onClick={handleUpload}
-              className="w-full"
-            >
+            <Button size="sm" loading={uploading} onClick={handleUpload} className="w-full">
               <Upload className="w-4 h-4" />
               Upload photo
             </Button>
